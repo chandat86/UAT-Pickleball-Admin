@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Da Nang Pickleball</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg:        #0a0f1e;
+    --bg2:       #0f1728;
+    --bg3:       #162033;
+    --border:    #1e2d4a;
+    --border2:   #2a3d5c;
+    --accent:    #0ea5e9;
+    --accent2:   #38bdf8;
+    --green:     #22c55e;
+    --orange:    #f59e0b;
+    --red:       #ef4444;
+    --purple:    #a855f7;
+    --text:      #e2e8f0;
+    --text2:     #94a3b8;
+    --text3:     #64748b;
+    --card-glow: 0 0 20px rgba(14,165,233,0.08);
+    --font:      'Be Vietnam Pro', sans-serif;
+    --mono:      'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(14,165,233,0.15) 0%, transparent 70%);
+  }
+  .login-box {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 48px 40px;
+    width: 380px;
+    box-shadow: var(--card-glow), 0 40px 80px rgba(0,0,0,0.5);
+    text-align: center;
+  }
+  .login-logo {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .login-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .login-sub {
+    font-size: 13px;
+    color: var(--text3);
+    margin-bottom: 36px;
+  }
+  .login-box input {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 3px;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .login-box input:focus { border-color: var(--accent); }
+  .login-box .gs-input {
+    letter-spacing: 0;
+    text-align: left;
+    font-size: 12px;
+    font-family: var(--font);
+  }
+  .gs-label { font-size: 11px; color: var(--text3); text-align: left; margin-bottom: 4px; }
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+  .btn-login:hover { background: var(--accent2); transform: translateY(-1px); }
+  .login-err { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 20px; }
+
+  /* ── MAIN LAYOUT ── */
+  #main-app { display: none; }
+  .app-layout { display: flex; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .org {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .sidebar-logo .title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.3;
+    margin-top: 2px;
+  }
+  .sidebar-logo .badge {
+    display: inline-block;
+    background: rgba(14,165,233,0.15);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+  .nav-section {
+    padding: 16px 10px 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 6px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    margin-bottom: 2px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text2);
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(14,165,233,0.15); color: var(--accent); font-weight: 700; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-sep { height: 1px; background: var(--border); margin: 12px 0; }
+  .sidebar-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .sidebar-footer .user-name { font-weight: 700; color: var(--accent); font-size: 13px; }
+  .btn-logout {
+    margin-top: 8px;
+    width: 100%;
+    padding: 7px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 7px;
+    color: var(--red);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-logout:hover { background: rgba(239,68,68,0.2); }
+
+  /* ── CONTENT ── */
+  .content {
+    margin-left: 220px;
+    flex: 1;
+    padding: 28px 28px;
+    min-height: 100vh;
+  }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .page-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: var(--card-glow);
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+
+  /* ── DASHBOARD STATS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: var(--border2); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .stat-card.blue::before  { background: var(--accent); }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.orange::before{ background: var(--orange); }
+  .stat-card.purple::before{ background: var(--purple); }
+  .stat-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 36px; font-weight: 900; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .stat-value.blue   { color: var(--accent); }
+  .stat-value.green  { color: var(--green); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-value.purple { color: var(--purple); }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .dash-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .dash-full { margin-bottom: 16px; }
+
+  /* ── LIVE TABLE ── */
+  .live-table { width: 100%; border-collapse: collapse; }
+  .live-table th {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  .live-table td { padding: 10px 10px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .live-table tr:last-child td { border-bottom: none; }
+  .live-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(34,197,94,0.12);
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .score-display {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--orange);
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-row { margin-bottom: 10px; }
+  .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .progress-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .progress-pct  { font-size: 12px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
+  .progress-bar  { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 3px; transition: width 0.6s ease; }
+
+  /* ── DATA TABLE ── */
+  .data-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table thead th {
+    background: var(--bg3);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .data-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .badge-admin   { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .badge-active  { background: rgba(34,197,94,0.12);  color: var(--green); }
+  .badge-locked  { background: rgba(239,68,68,0.12);  color: var(--red); }
+  .badge-pending { background: rgba(245,158,11,0.12); color: var(--orange); }
+  .code-mono { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 600; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-primary  { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-success  { background: var(--green); color: #fff; }
+  .btn-success:hover { filter: brightness(1.1); }
+  .btn-danger   { background: var(--red); color: #fff; }
+  .btn-danger:hover { filter: brightness(1.1); }
+  .btn-ghost    { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { background: var(--border); color: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { padding: 6px; width: 30px; height: 30px; justify-content: center; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; }
+  input[type=text], input[type=date], input[type=tel], input[type=email], select, textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select { cursor: pointer; }
+  select option { background: var(--bg2); }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-hint { font-size: 11px; color: var(--text3); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 18px;
+    padding: 28px 28px 24px;
+    width: 520px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+  }
+  .modal.wide { width: 680px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-title { font-size: 17px; font-weight: 800; color: var(--text); }
+  .modal-close { background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; padding: 4px; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 4px; background: var(--bg3); border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    border-radius: 7px;
+    color: var(--text3);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active { background: var(--bg2); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── SEARCH BAR ── */
+  .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    padding: 9px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  /* ── IMPORT AREA ── */
+  .import-area {
+    border: 2px dashed var(--border2);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .import-area:hover { border-color: var(--accent); background: rgba(14,165,233,0.04); }
+  .import-area p { color: var(--text3); font-size: 13px; margin-top: 6px; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast-item {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 240px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from{transform:translateX(60px);opacity:0} to{transform:translateX(0);opacity:1} }
+  .toast-item.success { border-left: 3px solid var(--green); }
+  .toast-item.error   { border-left: 3px solid var(--red); }
+  .toast-item.info    { border-left: 3px solid var(--accent); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+  .empty-state .icon { font-size: 36px; margin-bottom: 8px; }
+  .empty-state p { font-size: 13px; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── REFRESH BTN ── */
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    color: var(--text3);
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .refresh-btn.loading .ri { animation: spin 0.6s linear infinite; }
+
+  /* ── PERMISSION TAGS ── */
+  .perm-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .perm-tag {
+    background: rgba(14,165,233,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(14,165,233,0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* ── MATCH STATUS ── */
+  .m-done    { color: var(--green);  font-weight: 700; }
+  .m-live    { color: var(--orange); font-weight: 700; }
+  .m-pending { color: var(--text3); }
+
+  /* mobile */
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar-logo .title, .sidebar-logo .org, .sidebar-logo .badge,
+    .nav-item span, .nav-label, .sidebar-footer .user-name, .sidebar-footer .logout-label { display: none; }
+    .content { margin-left: 60px; padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .dash-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ LOGIN ════════════════ -->
+<div id="login-screen">
+  <div style="width:440px;max-width:95vw">
+    <div class="login-box" style="margin-bottom:12px">
+      <div class="login-logo">Da Nang Pickleball</div>
+      <div class="login-title">Admin Panel</div>
+      <div class="login-sub">Quản trị hệ thống trọng tài</div>
+
+      <div class="gs-label">🔗 Google Apps Script URL</div>
+      <input type="text" class="gs-input" id="gs-url-input" placeholder="https://script.google.com/macros/s/...EXEC" />
+
+      <div class="gs-label" style="margin-top:10px">🔑 Mã Admin</div>
+      <input type="text" id="admin-code-input" placeholder="ADMIN01" maxlength="20" />
+      <button class="btn-login" id="login-btn" onclick="doLogin()">Đăng nhập</button>
+      <div class="login-err" id="login-err"></div>
+      <div id="login-debug" style="display:none;margin-top:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px;text-align:left;font-size:11px;color:var(--orange);font-family:var(--mono);word-break:break-all;line-height:1.6"></div>
+    </div>
+
+    <!-- Hướng dẫn cho trọng tài -->
+    <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:14px;padding:16px 18px;">
+      <div style="font-size:12px;font-weight:800;color:var(--green);margin-bottom:8px;letter-spacing:1px">🏓 TRỌNG TÀI ĐĂNG NHẬP Ở ĐÂU?</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8">
+        Trọng tài <strong style="color:var(--text)">không dùng trang này</strong>.<br>
+        Trọng tài mở file <strong style="color:var(--accent)">pickleball_referee_final.html</strong><br>
+        và nhập mã trọng tài (REF001, REF002...) để đăng nhập.<br><br>
+        <span style="color:var(--text3);font-size:11px">Trang này chỉ dành cho Admin quản lý giải đấu.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ MAIN APP ════════════════ -->
+<div id="main-app">
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        <div class="org">Da Nang</div>
+        <div class="title">Pickleball<br>Referee</div>
+        <div class="badge">ADMIN</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Tổng quan</div>
+        <div class="nav-item active" onclick="nav('dashboard')">
+          <span class="icon">📊</span><span>Dashboard</span>
+        </div>
+        <div class="nav-sep"></div>
+        <div class="nav-label">Quản lý</div>
+        <div class="nav-item" onclick="nav('users')">
+          <span class="icon">👥</span><span>Trọng tài</span>
+        </div>
+        <div class="nav-item" onclick="nav('players')">
+          <span class="icon">🏓</span><span>Vận động viên</span>
+        </div>
+        <div class="nav-item" onclick="nav('matches')">
+          <span class="icon">📋</span><span>Lịch thi đấu</span>
+        </div>
+        <div class="nav-sep"></div>
+        <div class="nav-label">Kết quả</div>
+        <div class="nav-item" onclick="nav('results')">
+          <span class="icon">🏆</span><span>Kết quả</span>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-name" id="sidebar-user">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px" id="sidebar-code"></div>
+        <button class="btn-logout" onclick="doLogout()"><span class="logout-label">Đăng xuất</span> ↩</button>
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <div class="page-title">📊 Dashboard</div>
+            <div class="page-sub">Tổng quan tình hình giải đấu theo thời gian thực</div>
+          </div>
+          <button class="refresh-btn" id="dash-refresh-btn" onclick="loadDashboard()">
+            <span class="ri">↻</span> Làm mới
+          </button>
+        </div>
+
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card blue"><div class="stat-label">Tổng trận</div><div class="stat-value blue" id="s-total">—</div><div class="stat-sub">trong lịch thi đấu</div></div>
+          <div class="stat-card green"><div class="stat-label">Hoàn thành</div><div class="stat-value green" id="s-done">—</div><div class="stat-sub">đã có kết quả</div></div>
+          <div class="stat-card orange"><div class="stat-label">Đang diễn ra</div><div class="stat-value orange" id="s-live">—</div><div class="stat-sub">trận đang live</div></div>
+          <div class="stat-card purple"><div class="stat-label">Trọng tài</div><div class="stat-value purple" id="s-refs">—</div><div class="stat-sub">đã đăng nhập hôm nay: <span id="s-logins">0</span></div></div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-title">🔴 Đang diễn ra live</div>
+            <div id="live-table-wrap">
+              <div class="empty-state"><div class="icon">📡</div><p>Chưa có trận live</p></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📈 Tiến độ nội dung</div>
+            <div id="categories-wrap">
+              <div class="empty-state"><div class="icon">⏳</div><p>Đang tải...</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🕐 Kết quả gần nhất</div>
+          <div id="recent-results-wrap">
+            <div class="empty-state"><div class="icon">🏆</div><p>Chưa có kết quả</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USERS ── -->
+      <div class="page" id="page-users">
+        <div class="page-header">
+          <div>
+            <div class="page-title">👥 Quản lý Trọng tài</div>
+            <div class="page-sub">Thêm, phân quyền sân/vòng, khóa tài khoản</div>
+          </div>
+          <button class="btn btn-primary" onclick="openUserModal()">＋ Thêm trọng tài</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px; padding:14px 20px;">
+          <div style="font-size:12px; font-weight:700; color:var(--text3); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">RULE PHÂN QUYỀN</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:12px;">
+            <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:8px;padding:10px 14px;">
+              <div style="color:var(--purple);font-weight:800;margin-bottom:6px;">👑 Admin</div>
+              <div style="color:var(--text2);line-height:1.7">✅ Toàn quyền tất cả trận<br>✅ Quản lý Users / VĐV / Lịch<br>✅ Xem Dashboard đầy đủ<br>✅ Không giới hạn sân/vòng</div>
+            </div>
+            <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:10px 14px;">
+              <div style="color:var(--green);font-weight:800;margin-bottom:6px;">🏓 Trọng tài (active)</div>
+              <div style="color:var(--text2);line-height:1.7">✅ Xem trận theo sân/vòng phân<br>✅ Chấm điểm trận của mình<br>✅ Xem BXH + LiveScore<br>❌ Không quản lý Users/VĐV</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="search-bar">
+          <input type="text" class="search-input" id="user-search" placeholder="🔍 Tìm theo tên, mã, sân..." oninput="filterUsers()">
+          <button class="refresh-btn" onclick="loadUsers()">↻ Làm mới</button>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Mã</th><th>Họ tên</th><th>Trạng thái</th><th>Sân được phân</th><th>Vòng đấu</th><th>Hết hạn</th><th>Ghi chú</th><th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)"><span class="spinner"></span> Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── PLAYERS ── -->
+      <div class="page" id="page-players">
+        <div class="page-header">
+          <div>
+            <div class="page-title">🏓 Quản lý Vận động viên</div>
+            <div class="page-sub">Thêm VĐV thủ công hoặc import CSV</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="openImportModal()">📥 Import CSV</button>
+            <button class="btn btn-primary" onclick="openPlayerModal()">＋ Thêm VĐV</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('players','all')">Tất cả</button>
+          <button class="tab-btn" onclick="switchTab('players','active')">Đang tham gia</button>
+          <button class="tab-btn" onclick="switchTab('players','inactive')">Không tham gia</button>
+        </div>
+
+        <div class="search-bar">
+          <input type="text" class="search-input" id="player-search" placeholder="🔍 Tìm theo tên, mã, đơn vị..." oninput="filterPlayers()">
+          <button class="refresh-btn" onclick="loadPlayers()">↻ Làm mới</button>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Mã VĐV</th><th>Họ tên</th><th>Giới tính</th><th>Đơn vị</th><th>Nội dung</th><th>Cấp độ</th><th>SĐT</th><th>Trạng thái</th><th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="players-tbody">
+              <tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text3)"><span class="spinner"></span> Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── MATCHES ── -->
+      <div class="page" id="page-matches">
+        <div class="page-header">
+          <div>
+            <div class="page-title">📋 Lịch thi đấu</div>
+            <div class="page-sub">Thêm / chỉnh sửa trận đấu</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="openBatchModal()">⚡ Tạo hàng loạt</button>
+            <button class="btn btn-primary" onclick="openMatchModal()">＋ Thêm trận</button>
+          </div>
+        </div>
+
+        <div class="search-bar">
+          <input type="text" class="search-input" id="match-search" placeholder="🔍 Tìm theo mã, đội, nội dung..." oninput="filterMatches()">
+          <select id="match-filter-nd" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;" onchange="filterMatches()">
+            <option value="">Tất cả nội dung</option>
+          </select>
+          <button class="refresh-btn" onclick="loadMatches()">↻ Làm mới</button>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nội dung</th><th>Bảng</th><th>Mã</th><th>Đội A</th><th>Đội B</th><th>Sân</th><th>Vòng</th><th>Tỉ số</th><th>Trạng thái</th><th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="matches-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text3)"><span class="spinner"></span> Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── RESULTS ── -->
+      <div class="page" id="page-results">
+        <div class="page-header">
+          <div>
+            <div class="page-title">🏆 Kết quả thi đấu</div>
+            <div class="page-sub">Xem kết quả các trận đã hoàn thành</div>
+          </div>
+          <button class="refresh-btn" onclick="loadResults()">↻ Làm mới</button>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Thời gian</th><th>Nội dung</th><th>Bảng</th><th>Mã</th><th>Đội A</th><th>Đội B</th><th>Tỉ số</th><th>Thắng</th><th>Sân</th><th>Trọng tài</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text3)"><span class="spinner"></span> Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ════════════════ MODALS ════════════════ -->
+
+<!-- User Modal -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="user-modal-title">Thêm Trọng tài</div>
+      <button class="modal-close" onclick="closeModal('user-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Mã đăng nhập *</label>
+        <input type="text" id="u-code" placeholder="REF001" style="text-transform:uppercase;font-family:var(--mono)">
+        <span class="form-hint">Chữ hoa + số, không dấu</span>
+      </div>
+      <div class="form-group">
+        <label>Họ tên *</label>
+        <input type="text" id="u-name" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Vai trò</label>
+        <select id="u-status">
+          <option value="active">🏓 Trọng tài (active)</option>
+          <option value="admin">👑 Admin</option>
+          <option value="khóa">🔒 Khóa tài khoản</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Hết hạn</label>
+        <input type="date" id="u-expire">
+      </div>
+      <div class="form-group full">
+        <label>Sân được phân</label>
+        <input type="text" id="u-courts" placeholder="Sân 1,Sân 2 (để trống = tất cả sân)">
+        <span class="form-hint">Nhập tên sân cách nhau bằng dấu phẩy. Để trống = quyền tất cả sân.</span>
+      </div>
+      <div class="form-group full">
+        <label>Vòng đấu được phân</label>
+        <input type="text" id="u-rounds" placeholder="Vòng bảng,Tứ kết (để trống = tất cả vòng)">
+        <span class="form-hint">Để trống = quyền tất cả vòng đấu.</span>
+      </div>
+      <div class="form-group full">
+        <label>Ghi chú</label>
+        <input type="text" id="u-note" placeholder="Ghi chú tùy ý">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('user-modal')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveUser()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Player Modal -->
+<div class="modal-overlay" id="player-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title" id="player-modal-title">Thêm Vận động viên</div>
+      <button class="modal-close" onclick="closeModal('player-modal')">✕</button>
+    </div>
+    <div class="form-grid three">
+      <div class="form-group">
+        <label>Mã VĐV</label>
+        <input type="text" id="p-id" placeholder="P001" style="font-family:var(--mono)">
+      </div>
+      <div class="form-group">
+        <label>Họ tên *</label>
+        <input type="text" id="p-name" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Giới tính</label>
+        <select id="p-gender">
+          <option value="Nam">Nam</option>
+          <option value="Nữ">Nữ</option>
+          <option value="Khác">Khác</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nội dung thi đấu</label>
+        <input type="text" id="p-category" placeholder="Đôi Nam 5.4">
+      </div>
+      <div class="form-group">
+        <label>Cấp độ</label>
+        <input type="text" id="p-level" placeholder="5.4">
+      </div>
+      <div class="form-group">
+        <label>Ngày sinh</label>
+        <input type="date" id="p-dob">
+      </div>
+      <div class="form-group">
+        <label>Đơn vị / CLB</label>
+        <input type="text" id="p-club" placeholder="CLB Đà Nẵng">
+      </div>
+      <div class="form-group">
+        <label>Số điện thoại</label>
+        <input type="tel" id="p-phone" placeholder="0901234567">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="p-email" placeholder="vdv@gmail.com">
+      </div>
+      <div class="form-group full">
+        <label>Ghi chú</label>
+        <input type="text" id="p-note" placeholder="Ghi chú tùy ý">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('player-modal')">Hủy</button>
+      <button class="btn btn-primary" onclick="savePlayer()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV Modal -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">📥 Import VĐV từ CSV</div>
+      <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.7;">
+      Format CSV (header bắt buộc):<br>
+      <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:11px;">id,name,gender,dob,club,phone,email,category,level,note</code><br>
+      <span style="color:var(--orange)">Các cột không bắt buộc có thể để trống.</span>
+    </div>
+    <div class="import-area" id="csv-drop-area" onclick="document.getElementById('csv-file').click()">
+      <div style="font-size:28px">📂</div>
+      <p>Click để chọn file CSV hoặc kéo thả vào đây</p>
+      <p style="font-size:11px;margin-top:4px;">Hỗ trợ: .csv, .txt</p>
+      <input type="file" id="csv-file" accept=".csv,.txt" style="display:none" onchange="handleCSV(this)">
+    </div>
+    <div id="csv-preview" style="margin-top:12px;display:none;">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;">XEM TRƯỚC (<span id="csv-count">0</span> VĐV)</div>
+      <div style="max-height:200px;overflow-y:auto;" id="csv-preview-table"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('import-modal')">Hủy</button>
+      <button class="btn btn-primary" id="import-btn" onclick="importPlayers()" disabled>📤 Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Match Modal -->
+<div class="modal-overlay" id="match-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title" id="match-modal-title">Thêm trận đấu</div>
+      <button class="modal-close" onclick="closeModal('match-modal')">✕</button>
+    </div>
+    <div class="form-grid three">
+      <div class="form-group">
+        <label>Nội dung *</label>
+        <input type="text" id="m-nd" placeholder="Đôi Nam 5.4">
+      </div>
+      <div class="form-group">
+        <label>Bảng *</label>
+        <input type="text" id="m-bang" placeholder="Bảng A">
+      </div>
+      <div class="form-group">
+        <label>Mã trận *</label>
+        <input type="text" id="m-code" placeholder="A1" style="font-family:var(--mono)">
+      </div>
+      <div class="form-group">
+        <label>Đội A</label>
+        <input type="text" id="m-teama" placeholder="Nguyễn A - Trần B">
+      </div>
+      <div class="form-group">
+        <label>Đội B</label>
+        <input type="text" id="m-teamb" placeholder="Lê C - Phạm D">
+      </div>
+      <div class="form-group">
+        <label>Sân</label>
+        <input type="text" id="m-court" placeholder="Sân 1">
+      </div>
+      <div class="form-group">
+        <label>Vòng đấu</label>
+        <input type="text" id="m-round" placeholder="Vòng bảng">
+      </div>
+      <div class="form-group">
+        <label>Ghi chú</label>
+        <input type="text" id="m-note" placeholder="">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('match-modal')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveMatch()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Batch Create Modal -->
+<div class="modal-overlay" id="batch-modal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Tạo lịch Round-Robin</div>
+      <button class="modal-close" onclick="closeModal('batch-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nội dung</label>
+        <input type="text" id="b-nd" placeholder="Đôi Nam 5.4">
+      </div>
+      <div class="form-group">
+        <label>Bảng</label>
+        <input type="text" id="b-bang" placeholder="Bảng A">
+      </div>
+      <div class="form-group">
+        <label>Sân</label>
+        <input type="text" id="b-court" placeholder="Sân 1">
+      </div>
+      <div class="form-group">
+        <label>Vòng đấu</label>
+        <input type="text" id="b-round" placeholder="Vòng bảng">
+      </div>
+      <div class="form-group full">
+        <label>Danh sách đội (mỗi dòng 1 đội hoặc cặp VĐV)</label>
+        <textarea id="b-teams" rows="6" placeholder="Đội 1: Nguyễn A - Trần B&#10;Đội 2: Lê C - Phạm D&#10;Đội 3: Hoàng E - Vũ F&#10;Đội 4: Đặng G - Bùi H"></textarea>
+        <span class="form-hint">Nhập mỗi đội/cặp VĐV trên 1 dòng. Hệ thống tự tạo lịch round-robin.</span>
+      </div>
+    </div>
+    <div id="batch-preview" style="display:none;margin-top:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;">XEM TRƯỚC LỊCH (<span id="b-count">0</span> trận)</div>
+      <div style="max-height:200px;overflow-y:auto;font-size:12px;" id="b-preview-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="generateBatch()">👁 Xem trước</button>
+      <button class="btn btn-ghost" onclick="closeModal('batch-modal')">Hủy</button>
+      <button class="btn btn-primary" id="batch-save-btn" onclick="saveBatch()" disabled>💾 Tạo lịch</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast"></div>
+
+<!-- ════════════════ SCRIPT ════════════════ -->
+<script>
+// ── State ──
+let GS_URL     = '';
+let ADMIN_CODE = '';
+let adminName  = '';
+
+// Raw data cache
+let _users   = [];
+let _players = [];
+let _matches = [];
+let _results = [];
+let _csvRows = [];
+
+// Edit targets
+let _editUser   = null;
+let _editPlayer = null;
+let _editMatch  = null;
+let _batchRows  = [];
+
+// Dashboard auto-refresh
+let _dashTimer = null;
+
+// ── Startup ──
+window.onload = () => {
+  const saved = localStorage.getItem('pb_admin_session');
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      GS_URL     = s.url;
+      ADMIN_CODE = s.code;
+      adminName  = s.name;
+      showApp();
+    } catch(e) { localStorage.removeItem('pb_admin_session'); }
+  }
+};
+
+// ── Login ──
+async function doLogin() {
+  const url  = document.getElementById('gs-url-input').value.trim();
+  const code = document.getElementById('admin-code-input').value.trim().toUpperCase();
+  const err  = document.getElementById('login-err');
+
+  if (!url)  { err.textContent = '⚠️ Vui lòng nhập URL Google Apps Script'; return; }
+  if (!code) { err.textContent = '⚠️ Vui lòng nhập mã admin'; return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.textContent = 'Đang xác thực...';
+  btn.disabled = true;
+  err.textContent = '';
+
+  try {
+    const res = await fetch(`${url}?action=validate&code=${encodeURIComponent(code)}&device=AdminPanel`);
+    const d   = await res.json();
+    if (!d.ok || !d.valid) { err.textContent = '❌ ' + (d.reason || 'Sai mã'); return; }
+    if (!d.isAdmin) {
+      err.textContent = '❌ Tài khoản không có quyền Admin';
+      // Hiển thị debug để biết GSheets đang lưu gì
+      const dbg = document.getElementById('login-debug');
+      dbg.style.display = 'block';
+      dbg.innerHTML = `⚠️ Debug: Tài khoản <b>${d.name}</b> (${code}) hợp lệ nhưng KHÔNG phải Admin.<br>
+GSheets đang lưu Trạng thái = <b>"${d.statusRaw||'(trống)'}"</b><br><br>
+👉 Vào Google Sheet → tab <b>Users</b> → cột <b>Trạng thái</b> → đổi ô của ${code} thành chữ <b>admin</b> (viết thường).`;
+      return;
+    }
+    GS_URL     = url;
+    ADMIN_CODE = code;
+    adminName  = d.name;
+    localStorage.setItem('pb_admin_session', JSON.stringify({ url, code, name: adminName }));
+    showApp();
+  } catch(e) {
+    err.textContent = '❌ Không kết nối được GAS. Kiểm tra URL.';
+  } finally {
+    btn.textContent = 'Đăng nhập';
+    btn.disabled = false;
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin();
+});
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('sidebar-user').textContent = adminName;
+  document.getElementById('sidebar-code').textContent = ADMIN_CODE;
+  loadDashboard();
+}
+
+function doLogout() {
+  localStorage.removeItem('pb_admin_session');
+  clearInterval(_dashTimer);
+  location.reload();
+}
+
+// ── Navigation ──
+function nav(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('page-' + page).classList.add('active');
+
+  clearInterval(_dashTimer);
+  if (page === 'dashboard') { loadDashboard(); _dashTimer = setInterval(loadDashboard, 30000); }
+  if (page === 'users')    loadUsers();
+  if (page === 'players')  loadPlayers();
+  if (page === 'matches')  loadMatches();
+  if (page === 'results')  loadResults();
+}
+
+// ── GAS helpers ──
+async function gasGet(params) {
+  const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  const r  = await fetch(`${GS_URL}?${qs}`);
+  return r.json();
+}
+async function gasPost(body) {
+  const r = await fetch(GS_URL, { method:'POST', body: JSON.stringify(body) });
+  return r.json();
+}
+
+// ── Toast ──
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toast');
+  const el   = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.innerHTML = `<span>${type==='success'?'✅':type==='error'?'❌':'ℹ️'}</span>${msg}`;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Modal helpers ──
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Tab helper ──
+function switchTab(section, tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (section === 'players') filterPlayers(tab);
+}
+
+// ════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════
+async function loadDashboard() {
+  const btn = document.getElementById('dash-refresh-btn');
+  btn.classList.add('loading');
+  try {
+    const d = await gasGet({ action: 'dashboard', adminCode: ADMIN_CODE });
+    if (!d.ok) { toast('Lỗi dashboard: ' + d.reason, 'error'); return; }
+    renderDashboard(d);
+  } catch(e) { toast('Lỗi kết nối GAS', 'error'); }
+  finally { btn.classList.remove('loading'); }
+}
+
+function renderDashboard(d) {
+  const s = d.summary;
+  document.getElementById('s-total').textContent  = s.totalMatches;
+  document.getElementById('s-done').textContent   = s.doneMatches;
+  document.getElementById('s-live').textContent   = s.liveMatches;
+  document.getElementById('s-refs').textContent   = s.totalRefs;
+  document.getElementById('s-logins').textContent = s.todayLogins;
+
+  // Live table
+  const lw = document.getElementById('live-table-wrap');
+  if (!d.liveDetail || d.liveDetail.length === 0) {
+    lw.innerHTML = '<div class="empty-state"><div class="icon">📡</div><p>Chưa có trận live</p></div>';
+  } else {
+    lw.innerHTML = `<table class="live-table">
+      <thead><tr><th>Trận</th><th>Đội A</th><th>Tỉ số</th><th>Đội B</th><th>Game</th><th>Cập nhật</th></tr></thead>
+      <tbody>${d.liveDetail.map(r => {
+        const [nd,bang,code] = (r.key||'').split('|');
+        return `<tr>
+          <td><div class="live-badge"><div class="live-dot"></div>LIVE</div><br><span class="code-mono">${code||r.key}</span><br><span style="font-size:11px;color:var(--text3)">${nd} · ${bang}</span></td>
+          <td style="font-weight:600">${r.teamA||'—'}</td>
+          <td class="score-display">${r.scoreA} - ${r.scoreB}</td>
+          <td style="font-weight:600">${r.teamB||'—'}</td>
+          <td><span class="badge badge-pending">Game ${r.game||1}</span></td>
+          <td style="font-size:11px;color:var(--text3)">${r.updated||''}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }
+
+  // Categories progress
+  const cw = document.getElementById('categories-wrap');
+  if (!d.categories || d.categories.length === 0) {
+    cw.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>Chưa có dữ liệu</p></div>';
+  } else {
+    cw.innerHTML = d.categories.map(c => `
+      <div class="progress-row">
+        <div class="progress-header">
+          <span class="progress-name">${c.name}</span>
+          <span class="progress-pct">${c.done}/${c.total} · ${c.pct}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${c.pct}%"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${c.bangs.join(', ')}</div>
+      </div>
+    `).join('');
+  }
+
+  // Recent results
+  const rw = document.getElementById('recent-results-wrap');
+  if (!d.recentResults || d.recentResults.length === 0) {
+    rw.innerHTML = '<div class="empty-state"><div class="icon">🏆</div><p>Chưa có kết quả</p></div>';
+  } else {
+    rw.innerHTML = `<table class="live-table">
+      <thead><tr><th>Thời gian</th><th>Nội dung · Mã</th><th>Đội A</th><th>Tỉ số</th><th>Đội B</th><th>Thắng</th></tr></thead>
+      <tbody>${d.recentResults.map(r => `<tr>
+        <td style="font-size:11px;color:var(--text3)">${r.time}</td>
+        <td><span class="code-mono">${r.code}</span><br><span style="font-size:11px;color:var(--text3)">${r.nd} · ${r.bang}</span></td>
+        <td style="${r.winner===r.teamA?'color:var(--green);font-weight:700':'color:var(--text2)'}">${r.teamA}</td>
+        <td class="score-display">${r.scoreA}-${r.scoreB}</td>
+        <td style="${r.winner===r.teamB?'color:var(--green);font-weight:700':'color:var(--text2)'}">${r.teamB}</td>
+        <td style="color:var(--green);font-weight:700;font-size:12px">🏆 ${r.winner||'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+}
+
+// ════════════════════════════════════════
+//  USERS
+// ════════════════════════════════════════
+async function loadUsers() {
+  document.getElementById('users-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)"><span class="spinner"></span></td></tr>';
+  try {
+    const d = await gasGet({ action: 'getUsers', adminCode: ADMIN_CODE });
+    if (!d.ok) { toast('Lỗi tải users: ' + d.reason, 'error'); return; }
+    _users = d.rows.slice(1); // bỏ header
+    renderUsers(_users);
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+function renderUsers(rows) {
+  const tb = document.getElementById('users-tbody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">👥</div><p>Chưa có trọng tài</p></div></td></tr>'; return; }
+  tb.innerHTML = rows.map(r => {
+    const code   = r[0]||'';
+    const name   = r[1]||'';
+    const expire = r[2] ? (r[2] instanceof Date ? r[2].toLocaleDateString('vi-VN') : String(r[2]).split('T')[0]) : '';
+    const courts = r[3]||'';
+    const rounds = r[4]||'';
+    const note   = r[6]||'';
+    const status = String(r[7]||'active').toLowerCase();
+    const badge  = status==='admin' ? 'badge-admin' : status==='khóa'||status==='disabled' ? 'badge-locked' : 'badge-active';
+    const label  = status==='admin' ? '👑 Admin' : status==='khóa' ? '🔒 Khóa' : '✅ Active';
+    const courtTags = courts ? courts.split(',').map(c=>`<span class="perm-tag">${c.trim()}</span>`).join('') : '<span style="color:var(--text3);font-size:11px">Tất cả</span>';
+    const roundTags = rounds ? rounds.split(',').map(c=>`<span class="perm-tag" style="background:rgba(245,158,11,0.1);color:var(--orange);border-color:rgba(245,158,11,0.2)">${c.trim()}</span>`).join('') : '<span style="color:var(--text3);font-size:11px">Tất cả</span>';
+    return `<tr>
+      <td><span class="code-mono">${code}</span></td>
+      <td style="font-weight:600">${name}</td>
+      <td><span class="badge ${badge}">${label}</span></td>
+      <td><div class="perm-tags">${courtTags}</div></td>
+      <td><div class="perm-tags">${roundTags}</div></td>
+      <td style="font-size:12px;color:var(--text3)">${expire}</td>
+      <td style="font-size:12px;color:var(--text3)">${note}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="editUser('${code}')">✏️</button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2)" onclick="deleteUser('${code}','${name}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterUsers() {
+  const q = document.getElementById('user-search').value.toLowerCase();
+  const f = _users.filter(r => [r[0],r[1],r[3],r[4],r[6],r[7]].some(v => String(v||'').toLowerCase().includes(q)));
+  renderUsers(f);
+}
+
+function openUserModal(prefill=null) {
+  _editUser = prefill;
+  document.getElementById('user-modal-title').textContent = prefill ? 'Sửa Trọng tài' : 'Thêm Trọng tài';
+  document.getElementById('u-code').value   = prefill?.code   || '';
+  document.getElementById('u-name').value   = prefill?.name   || '';
+  document.getElementById('u-status').value = prefill?.status || 'active';
+  document.getElementById('u-expire').value = prefill?.expire || new Date(new Date().getFullYear()+1,11,31).toISOString().split('T')[0];
+  document.getElementById('u-courts').value = prefill?.courts || '';
+  document.getElementById('u-rounds').value = prefill?.rounds || '';
+  document.getElementById('u-note').value   = prefill?.note   || '';
+  document.getElementById('u-code').disabled = !!prefill;
+  openModal('user-modal');
+}
+
+function editUser(code) {
+  const row = _users.find(r => String(r[0]||'').toUpperCase() === code.toUpperCase());
+  if (!row) return;
+  const expire = row[2] ? (row[2] instanceof Date ? row[2].toISOString().split('T')[0] : String(row[2]).split('T')[0]) : '';
+  openUserModal({ code: row[0], name: row[1], expire, courts: row[3], rounds: row[4], note: row[6], status: row[7] });
+}
+
+async function saveUser() {
+  const code    = document.getElementById('u-code').value.trim().toUpperCase();
+  const name    = document.getElementById('u-name').value.trim();
+  const status  = document.getElementById('u-status').value;
+  const expire  = document.getElementById('u-expire').value;
+  const courts  = document.getElementById('u-courts').value.trim();
+  const rounds  = document.getElementById('u-rounds').value.trim();
+  const note    = document.getElementById('u-note').value.trim();
+  if (!code || !name) { toast('Vui lòng nhập mã và họ tên', 'error'); return; }
+
+  const payload = _editUser
+    ? { action: 'updateUser', adminCode: ADMIN_CODE, user: { code, name, expire, courts, rounds, note, status } }
+    : { action: 'addUser',    adminCode: ADMIN_CODE, user: { code, name, expire, courts, rounds, note, status } };
+
+  try {
+    const d = await gasPost(payload);
+    if (!d.ok) { toast('Lỗi: ' + d.reason, 'error'); return; }
+    toast(_editUser ? `✅ Đã cập nhật ${name}` : `✅ Đã thêm ${name} (${code})`, 'success');
+    closeModal('user-modal');
+    loadUsers();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+async function deleteUser(code, name) {
+  if (!confirm(`Xóa trọng tài ${name} (${code})?`)) return;
+  try {
+    const d = await gasPost({ action: 'deleteUser', adminCode: ADMIN_CODE, code });
+    if (!d.ok) { toast('Lỗi: ' + d.reason, 'error'); return; }
+    toast(`🗑 Đã xóa ${name}`, 'info');
+    loadUsers();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+// ════════════════════════════════════════
+//  PLAYERS
+// ════════════════════════════════════════
+async function loadPlayers() {
+  document.getElementById('players-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px"><span class="spinner"></span></td></tr>';
+  try {
+    const d = await gasGet({ action: 'getPlayers' });
+    if (!d.ok) { toast('Lỗi tải VĐV', 'error'); return; }
+    _players = d.rows.slice(1);
+    filterPlayers('all');
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+function filterPlayers(tab) {
+  const q      = document.getElementById('player-search').value.toLowerCase();
+  const status = tab || 'all';
+  let rows = _players.filter(r => {
+    if (status === 'active'   && String(r[10]||'').toLowerCase() !== 'active')   return false;
+    if (status === 'inactive' && String(r[10]||'').toLowerCase() === 'active')   return false;
+    return [r[0],r[1],r[4],r[7],r[8]].some(v => String(v||'').toLowerCase().includes(q));
+  });
+  renderPlayers(rows);
+}
+
+function renderPlayers(rows) {
+  const tb = document.getElementById('players-tbody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🏓</div><p>Không có VĐV</p></div></td></tr>'; return; }
+  tb.innerHTML = rows.map(r => {
+    const status = String(r[10]||'active').toLowerCase();
+    const badge  = status === 'active' ? 'badge-active' : 'badge-locked';
+    return `<tr>
+      <td><span class="code-mono">${r[0]||'—'}</span></td>
+      <td style="font-weight:600">${r[1]||'—'}</td>
+      <td>${r[2]||'—'}</td>
+      <td>${r[4]||'—'}</td>
+      <td>${r[7]||'—'}</td>
+      <td><span style="font-family:var(--mono);color:var(--accent);font-size:12px">${r[8]||'—'}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${r[5]||'—'}</td>
+      <td><span class="badge ${badge}">${status}</span></td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="editPlayer('${r[0]}')">✏️</button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2)" onclick="deletePlayer('${r[0]}','${r[1]}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openPlayerModal(prefill=null) {
+  _editPlayer = prefill;
+  document.getElementById('player-modal-title').textContent = prefill ? 'Sửa VĐV' : 'Thêm VĐV';
+  ['p-id','p-name','p-category','p-level','p-club','p-phone','p-email','p-note'].forEach(id => {
+    const key = id.replace('p-','');
+    document.getElementById(id).value = prefill?.[key] || '';
+  });
+  document.getElementById('p-gender').value = prefill?.gender || 'Nam';
+  document.getElementById('p-dob').value = prefill?.dob || '';
+  document.getElementById('p-id').disabled = !!prefill;
+  openModal('player-modal');
+}
+
+function editPlayer(id) {
+  const row = _players.find(r => String(r[0]||'').toUpperCase() === id.toUpperCase());
+  if (!row) return;
+  const dob = row[3] ? (row[3] instanceof Date ? row[3].toISOString().split('T')[0] : String(row[3]).split('T')[0]) : '';
+  openPlayerModal({ id: row[0], name: row[1], gender: row[2], dob, club: row[4], phone: row[5], email: row[6], category: row[7], level: row[8], note: row[9] });
+}
+
+async function savePlayer() {
+  const id       = document.getElementById('p-id').value.trim().toUpperCase();
+  const name     = document.getElementById('p-name').value.trim();
+  const gender   = document.getElementById('p-gender').value;
+  const dob      = document.getElementById('p-dob').value;
+  const category = document.getElementById('p-category').value.trim();
+  const level    = document.getElementById('p-level').value.trim();
+  const club     = document.getElementById('p-club').value.trim();
+  const phone    = document.getElementById('p-phone').value.trim();
+  const email    = document.getElementById('p-email').value.trim();
+  const note     = document.getElementById('p-note').value.trim();
+  if (!name) { toast('Vui lòng nhập họ tên VĐV', 'error'); return; }
+
+  const player = { id, name, gender, dob, category, level, club, phone, email, note, status: 'active' };
+  const action = _editPlayer ? 'updatePlayer' : 'addPlayer';
+  try {
+    const d = await gasPost({ action, adminCode: ADMIN_CODE, player });
+    if (!d.ok) { toast('Lỗi: ' + d.reason, 'error'); return; }
+    toast(_editPlayer ? `✅ Đã cập nhật ${name}` : `✅ Đã thêm VĐV ${name}`, 'success');
+    closeModal('player-modal');
+    loadPlayers();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+async function deletePlayer(id, name) {
+  if (!confirm(`Xóa VĐV ${name} (${id})?`)) return;
+  try {
+    const d = await gasPost({ action: 'deletePlayer', adminCode: ADMIN_CODE, id });
+    if (!d.ok) { toast('Lỗi: ' + d.reason, 'error'); return; }
+    toast(`🗑 Đã xóa ${name}`, 'info');
+    loadPlayers();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+// ── CSV Import ──
+function openImportModal() { _csvRows = []; document.getElementById('csv-preview').style.display='none'; document.getElementById('import-btn').disabled=true; openModal('import-modal'); }
+
+function handleCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) { toast('File CSV trống hoặc không đúng format', 'error'); return; }
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    _csvRows = lines.slice(1).map(line => {
+      const cols = line.split(',');
+      const get  = key => (cols[headers.indexOf(key)]||'').trim();
+      return { id: get('id'), name: get('name'), gender: get('gender')||'Nam', dob: get('dob'), club: get('club'), phone: get('phone'), email: get('email'), category: get('category'), level: get('level'), note: get('note'), status: get('status')||'active' };
+    }).filter(r => r.name);
+    document.getElementById('csv-count').textContent = _csvRows.length;
+    document.getElementById('csv-preview-table').innerHTML = `<table class="data-table" style="font-size:11px">
+      <thead><tr><th>Mã</th><th>Họ tên</th><th>Giới tính</th><th>Nội dung</th><th>CLB</th></tr></thead>
+      <tbody>${_csvRows.slice(0,20).map(r=>`<tr><td>${r.id}</td><td>${r.name}</td><td>${r.gender}</td><td>${r.category}</td><td>${r.club}</td></tr>`).join('')}</tbody>
+    </table>${_csvRows.length>20?`<p style="color:var(--text3);font-size:11px;padding:8px">...và ${_csvRows.length-20} VĐV khác</p>`:''}`;
+    document.getElementById('csv-preview').style.display = 'block';
+    document.getElementById('import-btn').disabled = false;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function importPlayers() {
+  if (!_csvRows.length) return;
+  const btn = document.getElementById('import-btn');
+  btn.disabled = true; btn.textContent = '⏳ Đang import...';
+  try {
+    const d = await gasPost({ action: 'importPlayers', adminCode: ADMIN_CODE, players: _csvRows });
+    if (!d.ok) { toast('Lỗi import: ' + d.reason, 'error'); return; }
+    toast(`✅ Import xong: ${d.added} VĐV mới, bỏ qua ${d.skipped} trùng`, 'success');
+    closeModal('import-modal');
+    loadPlayers();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+  finally { btn.disabled = false; btn.textContent = '📤 Import'; }
+}
+
+// ════════════════════════════════════════
+//  MATCHES
+// ════════════════════════════════════════
+async function loadMatches() {
+  document.getElementById('matches-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px"><span class="spinner"></span></td></tr>';
+  try {
+    const [md, rd, ld] = await Promise.all([
+      gasGet({ action: 'matches' }),
+      gasGet({ action: 'results' }),
+      gasGet({ action: 'live', code: 'all' })
+    ]);
+    _matches = md.rows?.slice(1) || [];
+    const doneKeys = new Set((rd.rows?.slice(1)||[]).map(r => `${r[1]}|${r[2]}|${r[3]}`));
+    const liveKeys = new Set((ld.rows?.slice(1)||[]).map(r => String(r[0]||'')));
+    _matches._doneKeys = doneKeys;
+    _matches._liveKeys = liveKeys;
+
+    // Populate filter
+    const nds = [...new Set(_matches.map(r => String(r[0]||'')).filter(Boolean))];
+    const sel = document.getElementById('match-filter-nd');
+    sel.innerHTML = '<option value="">Tất cả nội dung</option>' + nds.map(n=>`<option value="${n}">${n}</option>`).join('');
+
+    filterMatches();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+function filterMatches() {
+  const q  = document.getElementById('match-search').value.toLowerCase();
+  const nd = document.getElementById('match-filter-nd').value;
+  const rows = _matches.filter(r => {
+    if (nd && String(r[0]||'') !== nd) return false;
+    return [r[0],r[1],r[2],r[3],r[6]].some(v => String(v||'').toLowerCase().includes(q));
+  });
+  renderMatches(rows, _matches._doneKeys, _matches._liveKeys);
+}
+
+function renderMatches(rows, doneKeys, liveKeys) {
+  const tb = document.getElementById('matches-tbody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📋</div><p>Không có trận</p></div></td></tr>'; return; }
+  tb.innerHTML = rows.map(r => {
+    const key = `${r[0]}|${r[1]}|${r[2]}`;
+    const isDone = doneKeys?.has(key);
+    const isLive = liveKeys?.has(key);
+    const scoreA = r[4]!==''&&r[4]!==undefined ? r[4] : '—';
+    const scoreB = r[5]!==''&&r[5]!==undefined ? r[5] : '—';
+    let statusBadge = '<span class="badge" style="background:rgba(100,116,139,0.12);color:var(--text3)">⬜ Chưa</span>';
+    if (isLive) statusBadge = '<span class="badge badge-pending">🟠 Live</span>';
+    if (isDone) statusBadge = '<span class="badge badge-active">✅ Xong</span>';
+    const nd = r[0]||''; const bang = r[1]||''; const code = r[2]||'';
+    return `<tr>
+      <td style="font-size:12px;color:var(--text2)">${nd}</td>
+      <td><span style="color:var(--accent2);font-size:12px;font-weight:600">${bang}</span></td>
+      <td><span class="code-mono">${code}</span></td>
+      <td style="font-size:13px">${r[3]||'—'}</td>
+      <td style="font-size:13px">${r[6]||'—'}</td>
+      <td style="font-size:12px;color:var(--accent)">${r[7]||'—'}</td>
+      <td style="font-size:12px;color:var(--orange)">${r[8]||'—'}</td>
+      <td class="score-display" style="font-size:13px">${scoreA} - ${scoreB}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="editMatchRow('${nd}','${bang}','${code}')">✏️</button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2)" onclick="deleteMatch('${nd}','${bang}','${code}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openMatchModal(prefill=null) {
+  _editMatch = prefill;
+  document.getElementById('match-modal-title').textContent = prefill ? 'Sửa trận' : 'Thêm trận';
+  document.getElementById('m-nd').value    = prefill?.nd    || '';
+  document.getElementById('m-bang').value  = prefill?.bang  || '';
+  document.getElementById('m-code').value  = prefill?.code  || '';
+  document.getElementById('m-teama').value = prefill?.teamA || '';
+  document.getElementById('m-teamb').value = prefill?.teamB || '';
+  document.getElementById('m-court').value = prefill?.court || '';
+  document.getElementById('m-round').value = prefill?.round || '';
+  document.getElementById('m-note').value  = prefill?.note  || '';
+  document.getElementById('m-nd').disabled = !!prefill;
+  document.getElementById('m-bang').disabled = !!prefill;
+  document.getElementById('m-code').disabled = !!prefill;
+  openModal('match-modal');
+}
+
+function editMatchRow(nd, bang, code) {
+  const row = _matches.find(r => r[0]===nd && r[1]===bang && r[2]===code);
+  if (!row) return;
+  openMatchModal({ nd: row[0], bang: row[1], code: row[2], teamA: row[3], teamB: row[6], court: row[7], round: row[8], note: row[9] });
+}
+
+async function saveMatch() {
+  const nd    = document.getElementById('m-nd').value.trim();
+  const bang  = document.getElementById('m-bang').value.trim();
+  const code  = document.getElementById('m-code').value.trim();
+  const teamA = document.getElementById('m-teama').value.trim();
+  const teamB = document.getElementById('m-teamb').value.trim();
+  const court = document.getElementById('m-court').value.trim();
+  const round = document.getElementById('m-round').value.trim();
+  const note  = document.getElementById('m-note').value.trim();
+  if (!nd||!bang||!code) { toast('Vui lòng nhập Nội dung, Bảng, Mã trận', 'error'); return; }
+  const row = [nd, bang, code, teamA, '', '', teamB, court, round, note];
+  const action = _editMatch ? 'updateMatch' : 'addMatchAdmin';
+  const payload = _editMatch
+    ? { action, adminCode: ADMIN_CODE, noidung: nd, bang, code, row }
+    : { action, adminCode: ADMIN_CODE, row };
+  try {
+    const d = await gasPost(payload);
+    if (!d.ok) { toast('Lỗi: ' + d.reason, 'error'); return; }
+    toast(_editMatch ? '✅ Đã cập nhật trận' : '✅ Đã thêm trận mới', 'success');
+    closeModal('match-modal');
+    loadMatches();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+async function deleteMatch(nd, bang, code) {
+  if (!confirm(`Xóa trận ${code} (${nd} · ${bang})?`)) return;
+  try {
+    const d = await gasPost({ action: 'deleteMatch', adminCode: ADMIN_CODE, noidung: nd, bang, code });
+    if (!d.ok) { toast('Lỗi: ' + d.reason, 'error'); return; }
+    toast(`🗑 Đã xóa trận ${code}`, 'info');
+    loadMatches();
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+// ── Batch (Round Robin) ──
+function openBatchModal() { document.getElementById('batch-preview').style.display='none'; document.getElementById('batch-save-btn').disabled=true; _batchRows=[]; openModal('batch-modal'); }
+
+function generateBatch() {
+  const nd    = document.getElementById('b-nd').value.trim();
+  const bang  = document.getElementById('b-bang').value.trim();
+  const court = document.getElementById('b-court').value.trim();
+  const round = document.getElementById('b-round').value.trim();
+  const raw   = document.getElementById('b-teams').value.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+  if (raw.length < 2) { toast('Cần ít nhất 2 đội', 'error'); return; }
+  _batchRows = [];
+  let idx = 1;
+  for (let i = 0; i < raw.length; i++) {
+    for (let j = i+1; j < raw.length; j++) {
+      const code = bang.replace(/[^A-Z0-9]/gi,'') + idx;
+      _batchRows.push([nd, bang, code, raw[i], '', '', raw[j], court, round, '']);
+      idx++;
+    }
+  }
+  document.getElementById('b-count').textContent = _batchRows.length;
+  document.getElementById('b-preview-list').innerHTML = _batchRows.map((r,i)=>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2)">
+      <span class="code-mono" style="color:var(--accent)">${r[2]}</span>  ${r[3]} <span style="color:var(--text3)">vs</span> ${r[6]}
+    </div>`
+  ).join('');
+  document.getElementById('batch-preview').style.display = 'block';
+  document.getElementById('batch-save-btn').disabled = false;
+}
+
+async function saveBatch() {
+  if (!_batchRows.length) return;
+  const btn = document.getElementById('batch-save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
+  let added = 0, skipped = 0;
+  for (const row of _batchRows) {
+    try {
+      const d = await gasPost({ action: 'addMatchAdmin', adminCode: ADMIN_CODE, row });
+      if (d.ok) added++; else skipped++;
+    } catch(e) { skipped++; }
+  }
+  toast(`✅ Tạo xong: ${added} trận mới, bỏ qua ${skipped} trùng`, 'success');
+  closeModal('batch-modal');
+  loadMatches();
+  btn.disabled = false; btn.textContent = '💾 Tạo lịch';
+}
+
+// ════════════════════════════════════════
+//  RESULTS
+// ════════════════════════════════════════
+async function loadResults() {
+  document.getElementById('results-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px"><span class="spinner"></span></td></tr>';
+  try {
+    const d = await gasGet({ action: 'results' });
+    _results = d.rows?.slice(1) || [];
+    renderResults(_results.slice().reverse());
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+}
+
+function renderResults(rows) {
+  const tb = document.getElementById('results-tbody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">🏆</div><p>Chưa có kết quả</p></div></td></tr>'; return; }
+  tb.innerHTML = rows.map(r => `<tr>
+    <td style="font-size:11px;color:var(--text3)">${r[0]||'—'}</td>
+    <td style="font-size:12px">${r[1]||'—'}</td>
+    <td style="font-size:12px;color:var(--accent2)">${r[2]||'—'}</td>
+    <td><span class="code-mono">${r[3]||'—'}</span></td>
+    <td style="${r[8]===r[4]?'color:var(--green);font-weight:700':''}">${r[4]||'—'}</td>
+    <td style="${r[8]===r[5]?'color:var(--green);font-weight:700':''}">${r[5]||'—'}</td>
+    <td class="score-display">${r[6]} - ${r[7]}</td>
+    <td style="color:var(--green);font-weight:700">🏆 ${r[8]||'—'}</td>
+    <td style="font-size:12px;color:var(--accent)">${r[9]||'—'}</td>
+    <td style="font-size:12px;color:var(--text3)">${r[10]||'—'}</td>
+  </tr>`).join('');
+}
+
+// ── CSV drag & drop ──
+const dropArea = document.getElementById('csv-drop-area');
+if (dropArea) {
+  dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.style.borderColor = 'var(--accent)'; });
+  dropArea.addEventListener('dragleave', () => { dropArea.style.borderColor = ''; });
+  dropArea.addEventListener('drop', e => {
+    e.preventDefault();
+    dropArea.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) { document.getElementById('csv-file').files; handleCSV({ files: [file] }); }
+  });
+}
+</script>
+</body>
+</html>
