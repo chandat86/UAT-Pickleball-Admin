@@ -1565,59 +1565,59 @@ async function saveNoidung() {
 //    ... v.v.
 // ════════════════════════════════════════════════════════════════
 function roundRobinParallel(teams) {
-  // ════════════════════════════════════════════════════════════
-  //  Greedy Parallel Scheduler — đúng spec Pickleball Việt Nam
-  //  4 đội: Lượt1=1v2,3v4  Lượt2=1v3,2v4  Lượt3=1v4,2v3
-  //  - Tạo tất cả pairs (i,j) theo gap tăng dần
-  //  - Greedy assign vào lượt đấu, ưu tiên pack song song
-  //  - Mỗi lượt: tất cả đội đều khác nhau (không ai chờ)
-  // ════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════
+  //  Greedy Gap Scheduler — đúng spec Pickleball VN
+  //
+  //  4 đội: L1=1v2,3v4  L2=2v3,1v4  L3=1v3,2v4
+  //  5 đội: L1=1v2,3v4  L2=2v3,4v5  L3=1v3,2v4  L4=3v5,1v4  L5=2v5  L6=1v5
+  //  6 đội: L1=1v2,3v4,5v6  L2=2v3,4v5,1v6  ...
+  //
+  //  Nguyên tắc:
+  //  - Sinh tất cả C(n,2) cặp theo gap tăng dần: (1v2,2v3,...),(1v3,2v4,...), ...
+  //  - Greedy assign từng cặp vào lượt đầu tiên còn chỗ
+  //    (không đội nào xuất hiện 2 lần trong cùng lượt)
+  //  - Kết quả: song song tối đa, cặp liền kề (1v2,3v4,...) đứng trước
+  // ══════════════════════════════════════════════════════════
   var n = teams.length;
 
-  // Bước 1: tạo pairs theo thứ tự tối ưu (gap tăng dần, greedy non-conflicting)
-  var pairs_ordered = [];
-  var visited = {};
+  // Sinh tất cả cặp theo gap tăng dần
+  var allPairs = [];
   for (var gap = 1; gap < n; gap++) {
-    var gap_pairs = [];
-    for (var i = 1; i <= n - gap; i++) gap_pairs.push([i, i + gap]);
-    // Greedy: chọn cặp không đụng nhau trong gap này
-    var occ = {};
-    gap_pairs.forEach(function(p) {
-      if (!occ[p[0]] && !occ[p[1]] && !visited[p[0]+','+p[1]]) {
-        pairs_ordered.push(p);
-        occ[p[0]] = occ[p[1]] = 1;
-        visited[p[0]+','+p[1]] = 1;
-      }
-    });
-    // Còn lại của gap chưa thêm
-    gap_pairs.forEach(function(p) {
-      if (!visited[p[0]+','+p[1]]) {
-        pairs_ordered.push(p);
-        visited[p[0]+','+p[1]] = 1;
-      }
-    });
+    for (var i = 1; i <= n - gap; i++) {
+      allPairs.push([i, i + gap]);
+    }
   }
 
-  // Bước 2: greedy assign pairs vào lượt
-  var rounds = []; // [{matches:[{idxA,idxB}]}]
-  pairs_ordered.forEach(function(p) {
+  // Greedy assign vào lượt
+  var rounds   = [];
+  var assigned = {};
+
+  for (var pi = 0; pi < allPairs.length; pi++) {
+    var p   = allPairs[pi];
+    var key = p[0] + ',' + p[1];
+    if (assigned[key]) continue;
+
     var placed = false;
     for (var ri = 0; ri < rounds.length; ri++) {
-      var occ2 = {};
-      rounds[ri].matches.forEach(function(m){ occ2[m.idxA] = occ2[m.idxB] = 1; });
-      if (!occ2[p[0]] && !occ2[p[1]]) {
+      var used = {};
+      rounds[ri].matches.forEach(function(m){ used[m.idxA] = used[m.idxB] = 1; });
+      if (!used[p[0]] && !used[p[1]]) {
         rounds[ri].matches.push({ idxA: p[0], idxB: p[1] });
-        placed = true; break;
+        assigned[key] = 1;
+        placed = true;
+        break;
       }
     }
-    if (!placed) rounds.push({ round: rounds.length + 1, matches: [{ idxA: p[0], idxB: p[1] }] });
-  });
+    if (!placed) {
+      rounds.push({ round: rounds.length + 1, matches: [{ idxA: p[0], idxB: p[1] }] });
+      assigned[key] = 1;
+    }
+  }
 
   // Đánh số lượt
   rounds.forEach(function(r, i){ r.round = i + 1; });
   return rounds;
 }
-
 // Sinh prefix mã trận từ tên bảng
 // "Bảng A" → "A",  "Bảng B" → "B",  "Group C" → "C",  "Nhóm 1" → "N1"
 function bangPrefix(bangName) {
@@ -1743,37 +1743,36 @@ function previewBang() {
   document.getElementById('bang-preview').style.display = 'block';
 }
 
-// ── Handle import CSV/Excel/TXT ──
-// Hỗ trợ: UTF-8, UTF-8 BOM, UTF-16, Windows-1258 (tiếng Việt Windows)
+// ══════════════════════════════════════════════════════════
+//  IMPORT CSV/Excel — hỗ trợ:
+//   • File 1 cột (chỉ tên đội) → import vào bảng đang mở
+//   • File nhiều bảng: cột BẢNG,STT,Tên đội → import tất cả cùng lúc
+//   Encoding: UTF-8, UTF-8 BOM, UTF-16, Windows-1258 (Excel VN)
+// ══════════════════════════════════════════════════════════
 function handleBangImport(inp) {
   var f = inp.files[0];
   if (!f) return;
+  inp.value = ''; // reset để có thể chọn lại cùng file
   var ext = f.name.split('.').pop().toLowerCase();
 
   if (ext === 'xlsx' || ext === 'xls') {
-    // Excel: dùng SheetJS (đã bundle trong file)
+    // ── Excel via SheetJS ──
     var fr = new FileReader();
     fr.onload = function(ev) {
       try {
-        if (typeof XLSX !== 'undefined') {
-          var wb   = XLSX.read(ev.target.result, {type:'binary'});
-          var ws   = wb.Sheets[wb.SheetNames[0]];
-          var data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-          // Tìm cột chứa tên đội (bỏ cột STT số)
-          var teams = [];
-          data.forEach(function(row, ri) {
-            if (!row.length) return;
-            var cell0 = String(row[0]||'').trim();
-            var cell1 = String(row[1]||'').trim();
-            // Bỏ header
-            if (ri===0 && /^(stt|no|#|đội|team|tên)/i.test(cell0)) return;
-            // Nếu cột 0 là số, lấy cột 1
-            if (/^\d+$/.test(cell0) && cell1) { teams.push(cell1); return; }
-            if (cell0) teams.push(cell0);
-          });
-          setBangTeams(teams);
+        if (typeof XLSX === 'undefined') {
+          // Tải SheetJS on-demand
+          var script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+          script.onload = function(){
+            parseExcelBuf(ev.target.result);
+          };
+          script.onerror = function(){
+            toast('Không tải được SheetJS — dùng file .csv thay thế','er');
+          };
+          document.head.appendChild(script);
         } else {
-          toast('⚠️ SheetJS chưa tải — dùng file .csv thay thế','er');
+          parseExcelBuf(ev.target.result);
         }
       } catch(e2) { toast('Lỗi đọc Excel: '+e2.message,'er'); }
     };
@@ -1781,150 +1780,276 @@ function handleBangImport(inp) {
     return;
   }
 
-  // CSV / TXT — đọc ArrayBuffer để detect encoding
-  var fr = new FileReader();
-  fr.onload = function(ev) {
+  // ── CSV / TXT — đọc ArrayBuffer để detect encoding ──
+  var fr2 = new FileReader();
+  fr2.onload = function(ev) {
     var buf   = ev.target.result;
     var bytes = new Uint8Array(buf);
-    var text  = '';
-
-    // Detect BOM
-    if (bytes[0]===0xEF && bytes[1]===0xBB && bytes[2]===0xBF) {
-      // UTF-8 BOM
-      text = new TextDecoder('utf-8').decode(new Uint8Array(buf).slice(3));
-    } else if (bytes[0]===0xFF && bytes[1]===0xFE) {
-      // UTF-16 LE BOM
-      text = new TextDecoder('utf-16le').decode(new Uint8Array(buf).slice(2));
-    } else if (bytes[0]===0xFE && bytes[1]===0xFF) {
-      // UTF-16 BE BOM
-      text = new TextDecoder('utf-16be').decode(new Uint8Array(buf).slice(2));
-    } else {
-      // Thử UTF-8 strict
-      try {
-        text = new TextDecoder('utf-8', {fatal: true}).decode(buf);
-      } catch(_) {
-        // Fallback: Windows-1258 (tiếng Việt Windows/Excel "save as CSV")
-        try { text = new TextDecoder('windows-1258').decode(buf); }
-        catch(_2) { text = new TextDecoder('iso-8859-1').decode(buf); }
-      }
-    }
-    parseCsvText(text);
+    var text  = decodeWithBOM(bytes, buf);
+    parseCsvImport(text);
   };
-  fr.readAsArrayBuffer(f);
+  fr2.readAsArrayBuffer(f);
 }
 
-// Parse text → danh sách đội
-function parseCsvText(text) {
-  text = text.replace(/^\uFEFF/, ''); // strip BOM nếu còn sót
+function parseExcelBuf(binaryStr) {
+  var wb   = XLSX.read(binaryStr, {type:'binary'});
+  var ws   = wb.Sheets[wb.SheetNames[0]];
+  var data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  // Chuyển thành text CSV để dùng chung parseCsvImport
+  var lines = data.map(function(row){
+    return row.map(function(c){return String(c||'').trim();}).join(',');
+  }).filter(function(l){ return l.replace(/,/g,'').trim(); });
+  parseCsvImport(lines.join('\n'));
+}
+
+// Detect encoding từ BOM bytes
+function decodeWithBOM(bytes, buf) {
+  if (bytes[0]===0xEF && bytes[1]===0xBB && bytes[2]===0xBF)
+    return new TextDecoder('utf-8').decode(new Uint8Array(buf).slice(3));
+  if (bytes[0]===0xFF && bytes[1]===0xFE)
+    return new TextDecoder('utf-16le').decode(new Uint8Array(buf).slice(2));
+  if (bytes[0]===0xFE && bytes[1]===0xFF)
+    return new TextDecoder('utf-16be').decode(new Uint8Array(buf).slice(2));
+  // Thử UTF-8 strict
+  try { return new TextDecoder('utf-8',{fatal:true}).decode(buf); }
+  catch(_) {
+    // Fallback: windows-1258 (Excel "Save as CSV" trên Windows VN)
+    try { return new TextDecoder('windows-1258').decode(buf); }
+    catch(_2) { return new TextDecoder('iso-8859-1').decode(buf); }
+  }
+}
+
+// ── Parse CSV text — hỗ trợ 1 bảng và nhiều bảng ──
+function parseCsvImport(text) {
+  text = text.replace(/^\uFEFF/,''); // strip BOM sót
   var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
   if (!lines.length) { toast('File rỗng hoặc không đọc được','er'); return; }
 
-  // Detect separator (comma, semicolon, tab)
+  // Bỏ dòng comment
+  lines = lines.filter(function(l){ return !l.startsWith('#'); });
+
+  // Detect separator
   var sep = ',';
-  if (lines[0].indexOf('\t') >= 0)  sep = '\t';
+  if (lines[0].indexOf('\t') >= 0) sep = '\t';
   else if (lines[0].indexOf(';') >= 0) sep = ';';
 
-  var teams = [];
-  lines.forEach(function(line, li) {
-    if (line.startsWith('#')) return; // bỏ comment
-    var cols = line.split(sep).map(function(c){ return c.trim().replace(/^["']|["']$/g,''); });
-    var cell0 = cols[0] || '';
-    var cell1 = cols[1] || '';
-
-    // Bỏ dòng header
-    if (li === 0 && /^(stt|no|#|đội|doi|team|tên|ten|name)/i.test(cell0)) return;
-
-    // Nếu cột 0 là số thứ tự → tên ở cột 1
-    if (/^\d+$/.test(cell0) && cell1) { teams.push(cell1); return; }
-    // Ngược lại lấy cột 0
-    if (cell0) teams.push(cell0);
+  // Parse thành ma trận
+  var matrix = lines.map(function(line){
+    return line.split(sep).map(function(c){ return c.trim().replace(/^["'\u201c\u201d]|["'\u201c\u201d]$/g,''); });
   });
 
-  if (!teams.length) { toast('Không tìm thấy tên đội trong file','er'); return; }
-  setBangTeams(teams);
+  // Detect header
+  var startRow = 0;
+  var hdr0 = (matrix[0][0]||'').toLowerCase().replace(/\s/g,'');
+  var isHeader = /^(bảng|bang|nhom|nhóm|group|stt|no|#|đội|doi|team|tên|ten|name)/.test(hdr0);
+  if (isHeader) startRow = 1;
+
+  // Detect số cột: 1 cột = chỉ tên đội; 2+ cột = có STT+tên hoặc BẢNG+STT+tên
+  var nCols = Math.max.apply(null, matrix.slice(startRow, startRow+5).map(function(r){return r.length;}));
+
+  if (nCols <= 1) {
+    // 1 cột — chỉ có tên đội, import vào bảng đang mở
+    var teams = matrix.slice(startRow).map(function(r){return r[0]||'';}).filter(Boolean);
+    setBangTeams(teams);
+    return;
+  }
+
+  // ── Detect column meaning (flexible) ──
+  // Hdr có thể là: [BẢNG, STT, TÊN ĐỘI] hoặc [STT, TÊN ĐỘI] hoặc [TÊN ĐỘI]
+  var colBang = -1, colStt = -1, colName = -1;
+  if (isHeader) {
+    matrix[0].forEach(function(h, ci){
+      var hh = h.toLowerCase().replace(/\s/g,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+      if (/^(bang|nhom|group)/.test(hh))  colBang = ci;
+      else if (/^(stt|no|#|\d)/.test(hh)) colStt  = ci;
+      else if (/^(ten|doi|team|name|vdv)/.test(hh)) colName = ci;
+    });
+  }
+  // Heuristic nếu không detect được header
+  if (colBang < 0 && colName < 0) {
+    var sample = matrix[startRow] || [];
+    if (sample.length >= 3) {
+      // BẢNG, STT, TÊN
+      colBang = 0; colStt = 1; colName = 2;
+    } else if (sample.length === 2) {
+      // STT/BẢNG, TÊN — kiểm tra col0 là số hay chữ
+      if (/^\d+$/.test(sample[0])) { colStt = 0; colName = 1; }
+      else { colBang = 0; colName = 1; }
+    }
+  }
+  if (colName < 0) colName = (colBang >= 0) ? (colBang+1 === colStt ? colStt+1 : colBang+1) : (colStt >= 0 ? colStt+1 : 0);
+
+  // Group by bảng
+  var bangMap = {}; // bangName → [teams in order]
+  var bangOrder = [];
+  matrix.slice(startRow).forEach(function(row){
+    if (!row.length) return;
+    var teamName = String(row[colName]||'').trim();
+    if (!teamName) return;
+    var bangName = colBang >= 0 ? String(row[colBang]||'').trim() : '';
+    if (!bangName) bangName = '_single_';
+    if (!bangMap[bangName]) { bangMap[bangName] = []; bangOrder.push(bangName); }
+    bangMap[bangName].push(teamName);
+  });
+
+  if (!bangOrder.length) { toast('Không đọc được tên đội từ file','er'); return; }
+
+  if (bangOrder.length === 1 && bangOrder[0] === '_single_') {
+    // 1 bảng không tên → import vào bảng đang mở
+    setBangTeams(bangMap['_single_']);
+  } else {
+    // Nhiều bảng → xác nhận trước khi import toàn bộ
+    var summary = bangOrder.map(function(b){
+      return b + ' (' + bangMap[b].length + ' đội)';
+    }).join(', ');
+    var totalMatch = bangOrder.reduce(function(sum, b){
+      var n = bangMap[b].length;
+      if (n%2===0) return sum + n*(n-1)/2;
+      return sum + n*(n-1)/2; // cả lẻ cũng tính đủ C(n,2)
+    }, 0);
+    if (confirm('Import ' + bangOrder.length + ' bảng: ' + summary + '\n→ Tổng ' + totalMatch + ' trận\n\nXác nhận import?')) {
+      importMultiBang(bangMap, bangOrder);
+    }
+  }
+}
+
+// Import nhiều bảng cùng lúc
+async function importMultiBang(bangMap, bangOrder) {
+  if (!_curTourn || !_curNd) { toast('Chọn nội dung trước','er'); return; }
+  var giaiId = String(_curTourn[0]||'');
+  var court  = ((_curTourn[3]||'').split(',')[0]||'').trim();
+  var round  = 'Vòng bảng';
+
+  var allRows = [];
+  bangOrder.forEach(function(bangName){
+    var teams    = bangMap[bangName];
+    var pfx      = bangPrefix(bangName);
+    var schedule = roundRobinParallel(teams);
+    var matchNo  = 1;
+    schedule.forEach(function(lv){
+      lv.matches.forEach(function(m){
+        allRows.push([giaiId, _curNd, bangName, pfx+matchNo,
+          teams[m.idxA-1], '', '', teams[m.idxB-1], court, round, '']);
+        matchNo++;
+      });
+    });
+  });
+
+  // Đóng modal, hiển thị progress
+  closeMo('mo-bang');
+  toast('⏳ Đang tạo ' + allRows.length + ' trận từ ' + bangOrder.length + ' bảng...','in');
+  var added=0, skipped=0;
+  var chunks=[];
+  for(var i=0;i<allRows.length;i+=5) chunks.push(allRows.slice(i,i+5));
+  for(var ci=0;ci<chunks.length;ci++){
+    await Promise.all(chunks[ci].map(async function(row){
+      try{ var d=await gPost({action:'addMatchAdmin',adminCode:CODE,row}); d.ok?added++:skipped++; }
+      catch(e){ skipped++; }
+    }));
+  }
+  toast('✅ Import xong: '+added+' trận mới, '+skipped+' bỏ qua từ '+bangOrder.length+' bảng','ok');
+  await loadMatchesCache(giaiId);
+  renderBangList(giaiId, _curNd);
 }
 
 function setBangTeams(teams) {
   if (!teams.length) { toast('Không đọc được tên đội từ file','er'); return; }
   document.getElementById('bang-teams').value = teams.join('\n');
   var res = document.getElementById('bang-import-result');
-  res.style.cssText = 'display:block;font-size:12px;color:var(--gn);margin-top:6px';
-  res.textContent   = '✅ Đã import ' + teams.length + ' đội — chuyển sang tab Nhập tay để xem lịch';
+  res.style.cssText = 'display:block;font-size:12px;color:var(--gn);margin-top:6px;font-weight:600';
+  res.textContent   = '✅ Đã import ' + teams.length + ' đội — xem lịch bên dưới';
   // Chuyển về tab nhập tay
   var firstTab = document.querySelector('#bang-tabs .tb');
   if (firstTab) bangTab(firstTab, 'bang-tp-manual');
-  // Auto preview
-  setTimeout(previewBang, 100);
+  // Auto preview sau 80ms (đợi DOM update)
+  setTimeout(previewBang, 80);
   toast('✅ Import ' + teams.length + ' đội thành công','ok');
 }
 
-// ── Tải file mẫu CSV — nhiều bảng đấu ──
-// BOM UTF-8 → Excel/Windows đọc đúng tiếng Việt
+// ── Tải file mẫu CSV nhiều bảng ──
 function dlBangTemplate() {
-  // File mẫu: 3 bảng với số đội khác nhau
-  // Format: BẢNG,STT,Tên đội  (cột BẢNG và STT tùy chọn)
-  var BOM  = '\uFEFF';
+  // File mẫu: 4 bảng, 3/4/5/6 đội — UTF-8 BOM cho Excel đọc đúng tiếng Việt
   var CRLF = '\r\n';
+
+  // Tính trước lịch để ghi vào comment
+  function rrPreview(n) {
+    // Chỉ cần liệt kê các cặp theo thứ tự lượt để ghi chú
+    var circle = [], hasBye = (n%2!==0);
+    for(var i=1;i<=n;i++) circle.push(i);
+    if(hasBye) circle.push(0);
+    var N=circle.length, lines=[];
+    for(var r=0;r<N-1;r++){
+      var pairs=[];
+      for(var m=0;m<N/2;m++){
+        var a=circle[m],b=circle[N-1-m];
+        if(a&&b) pairs.push(a+'v'+b);
+      }
+      lines.push('L'+(r+1)+': '+pairs.join(', '));
+      var last=circle.splice(N-1,1)[0]; circle.splice(1,0,last);
+    }
+    return lines.join(' | ');
+  }
+
   var rows = [
     // Header
     'BẢNG,STT,Tên đội',
-    // Bảng A: 4 đội → 6 trận (3 lượt × 2 trận song song)
-    '# Bảng A — 4 đội → 6 trận',
-    '# Lượt 1: A1=1vs2  A2=3vs4',
-    '# Lượt 2: A3=1vs3  A4=2vs4',
-    '# Lượt 3: A5=1vs4  A6=2vs3',
+    '# ============================================================',
+    '# FILE MẪU IMPORT NHIỀU BẢNG — Pickleball Referee DA NANG',
+    '# Cột BẢNG: tên bảng (Bảng A / Bảng B / ...)',
+    '# Cột STT : số thứ tự đội trong bảng',
+    '# Cột Tên đội: tên cặp VĐV',
+    '# Hệ thống tự tạo lịch Round-Robin song song',
+    '# ============================================================',
+    '',
+    '# ─── Bảng A — 4 đội → 6 trận ─────────────────────────────',
+    '# ' + rrPreview(4),
     'Bảng A,1,Nguyễn Văn An - Trần Thị Bình',
     'Bảng A,2,Lê Văn Cường - Phạm Thị Dung',
     'Bảng A,3,Hoàng Văn Em - Vũ Thị Phương',
     'Bảng A,4,Đặng Văn Giang - Bùi Thị Hoa',
     '',
-    // Bảng B: 5 đội → 10 trận (5-6 lượt)
-    '# Bảng B — 5 đội → 10 trận',
-    '# Lượt 1: B1=1vs2  B2=3vs4',
-    '# Lượt 2: B3=2vs3  B4=4vs5',
-    '# Lượt 3: B5=1vs3  B6=2vs4',
-    '# Lượt 4: B7=3vs5  B8=1vs4',
-    '# Lượt 5: B9=2vs5',
-    '# Lượt 6: B10=1vs5',
+    '# ─── Bảng B — 5 đội → 10 trận ────────────────────────────',
+    '# ' + rrPreview(5),
     'Bảng B,1,Phan Văn Khoa - Ngô Thị Lan',
     'Bảng B,2,Đinh Văn Minh - Trương Thị Nga',
     'Bảng B,3,Lý Văn Oanh - Đỗ Thị Phúc',
     'Bảng B,4,Vương Văn Quân - Tô Thị Rạng',
     'Bảng B,5,Cao Văn Sơn - Mai Thị Tâm',
     '',
-    // Bảng C: 3 đội → 3 trận
-    '# Bảng C — 3 đội → 3 trận (mỗi lượt 1 trận, 1 đội nghỉ)',
-    '# Lượt 1: C1=1vs2  (3 nghỉ)',
-    '# Lượt 2: C2=2vs3  (1 nghỉ)',
-    '# Lượt 3: C3=1vs3  (2 nghỉ)',
+    '# ─── Bảng C — 3 đội → 3 trận (1 đội nghỉ mỗi lượt) ──────',
+    '# ' + rrPreview(3),
     'Bảng C,1,Dương Văn Ước - Hồ Thị Vân',
     'Bảng C,2,Kiều Văn Xuân - Lưu Thị Yến',
     'Bảng C,3,Mã Văn Phong - Nhan Thị Anh',
     '',
-    // Bảng D: 6 đội → 15 trận (5 lượt × 3 trận song song)
-    '# Bảng D — 6 đội → 15 trận',
-    '# Lượt 1: D1=1vs2  D2=3vs4  D3=5vs6',
-    '# Lượt 2: D4=2vs3  D5=4vs5  D6=1vs6',
-    '# Lượt 3: D7=1vs3  D8=2vs4',
-    '# ...',
+    '# ─── Bảng D — 6 đội → 15 trận ────────────────────────────',
+    '# ' + rrPreview(6),
     'Bảng D,1,Ong Văn Bảo - Peng Thị Cẩm',
     'Bảng D,2,Quách Văn Dần - Rẫy Thị Em',
     'Bảng D,3,Sào Văn Phú - Tây Thị Giang',
     'Bảng D,4,Ủy Văn Hải - Vai Thị Ích',
     'Bảng D,5,Xây Văn Kỳ - Yêu Thị Long',
-    'Bảng D,6,Zảo Văn Mạnh - Ào Thị Nhi',
+    'Bảng D,6,Bảo Văn Mạnh - Anh Thị Nhi',
+    '',
+    '# ─── Ghi chú ──────────────────────────────────────────────',
+    '# • Thêm bảng mới: copy khối Bảng X và đổi tên bảng + STT',
+    '# • STT phải bắt đầu từ 1 trong mỗi bảng',
+    '# • Tên đội không có dấu phẩy (dùng dấu gạch ngang -)',
   ];
 
+  // UTF-8 BOM để Excel Windows đọc đúng tiếng Việt
+  var BOM  = '\uFEFF';
   var csv  = BOM + rows.join(CRLF);
-  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   var url  = URL.createObjectURL(blob);
   var a    = document.createElement('a');
   a.href = url; a.download = 'mau_nhieu_bang_pickleball.csv';
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('✅ Đã tải file mẫu CSV (UTF-8 BOM — Excel đọc được tiếng Việt)','ok');
+  toast('✅ Tải file mẫu thành công — mở bằng Excel để điền liền','ok');
 }
+
 
 // ── Lưu bảng + đẩy lịch lên GAS ──
 // ── Lưu bảng + đẩy lịch lên GAS ──
