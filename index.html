@@ -860,30 +860,70 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 <!-- Thêm bảng đấu + nhập VĐV -->
 <div class="mo" id="mo-bang"><div class="mbox w">
   <div class="mh"><div class="mtt" id="bang-mo-title">＋ Thêm bảng đấu</div><button class="mc" onclick="closeMo('mo-bang')">✕</button></div>
-  <div class="fgrid">
-    <div class="fg"><label>Tên bảng *</label>
+
+  <!-- Thông tin bảng -->
+  <div class="fgrid" style="margin-bottom:12px">
+    <div class="fg" style="margin-bottom:0"><label>Tên bảng *</label>
       <input type="text" id="bang-name" placeholder="Bảng A">
-      <span class="hint">Đặt tên bảng: A, B, C... hoặc tùy ý</span></div>
-    <div class="fg"><label>Sân thi đấu</label>
+      <span class="hint">A, B, C... hoặc tùy ý. Mã trận sẽ là A1, A2...</span></div>
+    <div class="fg" style="margin-bottom:0"><label>Sân thi đấu</label>
       <input type="text" id="bang-court" placeholder="Sân 1"></div>
-    <div class="fg"><label>Vòng đấu</label>
-      <input type="text" id="bang-round" placeholder="Vòng bảng"></div>
-    <div class="fg"><label>Quy tắc điểm</label>
+    <div class="fg" style="margin-bottom:0"><label>Vòng đấu</label>
+      <input type="text" id="bang-round" placeholder="Vòng bảng" value="Vòng bảng"></div>
+    <div class="fg" style="margin-bottom:0"><label>Quy tắc điểm</label>
       <select id="bang-rule">
         <option value="11">Chạm 11</option>
         <option value="15">Chạm 15</option>
         <option value="21">Chạm 21</option>
       </select></div>
   </div>
-  <div class="fg full"><label>Danh sách VĐV / Đội — mỗi dòng 1 đội</label>
-    <textarea id="bang-teams" rows="10" placeholder="Nguyễn Văn A - Trần Văn B&#10;Lê Thị C - Phạm Thị D&#10;Hoàng Văn E - Vũ Thị F&#10;Đặng Văn G - Bùi Thị H&#10;..."></textarea>
-    <span class="hint">Tối thiểu 2 đội để tạo lịch Round-Robin tự động</span></div>
-  <div id="bang-preview" style="display:none;margin-top:8px">
-    <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:6px">XEM TRƯỚC LỊCH — <span id="bang-match-count">0</span> trận</div>
-    <div style="max-height:160px;overflow-y:auto;background:var(--bg3);border-radius:8px;padding:10px;font-size:12px" id="bang-preview-list"></div>
+
+  <!-- Tabs: Nhập tay / Import CSV -->
+  <div class="tabs" style="margin-bottom:10px" id="bang-tabs">
+    <button class="tb on" onclick="bangTab(this,'bang-tp-manual')">✏️ Nhập danh sách đội</button>
+    <button class="tb" onclick="bangTab(this,'bang-tp-import')">📥 Import từ Excel/CSV</button>
   </div>
+
+  <!-- Tab: Nhập tay -->
+  <div class="tpanel on" id="bang-tp-manual">
+    <div class="fg full" style="margin-bottom:6px">
+      <label>Danh sách đội — mỗi dòng 1 đội (có đánh số tự động)</label>
+      <textarea id="bang-teams" rows="9" style="font-family:var(--mo);font-size:13px;line-height:1.6"
+        placeholder="Nguyễn Văn A - Trần Văn B&#10;Lê Thị C - Phạm Thị D&#10;Hoàng Văn E - Vũ Thị F&#10;Đặng Văn G - Bùi Thị H"
+        oninput="autoPreviewBang()"></textarea>
+      <span class="hint">Tối thiểu 2 đội. Lịch thi đấu theo thuật toán song song (các đội cùng lượt đấu đồng thời).</span>
+    </div>
+  </div>
+
+  <!-- Tab: Import CSV/Excel -->
+  <div class="tpanel" id="bang-tp-import">
+    <div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px;color:var(--tx2);line-height:1.8">
+      <strong style="color:var(--tx)">Định dạng file:</strong> 1 cột duy nhất, mỗi dòng 1 tên đội. Không cần header.<br>
+      Hỗ trợ: <strong>.csv</strong> · <strong>.txt</strong> · <strong>.xlsx</strong> (sheet đầu tiên, cột A)
+    </div>
+    <div class="ia" id="bang-drop-area" onclick="document.getElementById('bang-csv-inp').click()">
+      <div style="font-size:28px">📂</div>
+      <p>Click chọn hoặc kéo thả file vào đây</p>
+      <input type="file" id="bang-csv-inp" accept=".csv,.txt,.xlsx,.xls" style="display:none" onchange="handleBangImport(this)">
+    </div>
+    <div id="bang-import-result" style="display:none;margin-top:8px;font-size:12px;color:var(--gn)"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <button class="btn bh" style="font-size:12px" onclick="dlBangTemplate()">⬇️ Tải file mẫu CSV</button>
+      <span style="font-size:11px;color:var(--tx3)">File mẫu: 1 cột, mỗi dòng 1 tên đội</span>
+    </div>
+  </div>
+
+  <!-- Preview lịch -->
+  <div id="bang-preview" style="display:none;margin-top:10px">
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+      <span>XEM TRƯỚC LỊCH — <span id="bang-match-count">0</span> trận · <span id="bang-team-count">0</span> đội</span>
+      <span style="font-size:10px;color:var(--ac)">Sắp xếp song song (đội không phải chờ)</span>
+    </div>
+    <div style="max-height:200px;overflow-y:auto;background:var(--bg3);border-radius:8px;padding:10px;font-size:12px" id="bang-preview-list"></div>
+  </div>
+
   <div class="mf">
-    <button class="btn bh" onclick="previewBang()">👁 Xem trước lịch</button>
+    <button class="btn bh" onclick="previewBang()">👁 Xem trước</button>
     <button class="btn bh" onclick="closeMo('mo-bang')">Hủy</button>
     <button class="btn bp" id="bang-save-btn" onclick="saveBang()">💾 Tạo bảng + lịch đấu</button>
   </div>
@@ -1465,68 +1505,240 @@ async function saveNoidung() {
 }
 
 // ── Mở modal thêm bảng ──
-function openAddBangMo(existingBang='') {
+// ════════════════════════════════════════════════════════════════
+//  ROUND-ROBIN PARALLEL SCHEDULER
+//  Thuật toán xếp lịch song song: cùng lượt đấu các đội
+//  không phải chờ nhau, tối đa hoá sử dụng sân.
+//
+//  Ví dụ 4 đội [1,2,3,4]:
+//    Lượt 1: 1vs2, 3vs4   (đấu đồng thời)
+//    Lượt 2: 1vs3, 2vs4
+//    Lượt 3: 1vs4, 2vs3
+//
+//  Thuật toán: "Circle method" (round-robin chuẩn)
+//  - Đội 1 cố định, xoay các đội còn lại theo chiều kim đồng hồ
+//  - Mỗi vòng xoay = 1 lượt thi đấu
+//  - N đội chẵn: N-1 lượt, mỗi lượt N/2 trận song song
+//  - N đội lẻ: N lượt, mỗi lượt (N-1)/2 trận (1 đội nghỉ)
+// ════════════════════════════════════════════════════════════════
+function roundRobinParallel(teams) {
+  var n   = teams.length;
+  var hasBy = (n % 2 !== 0); // có đội nghỉ nếu số lẻ
+  var list = teams.slice(); // copy
+  if (hasBy) list.push('__BYE__'); // thêm đội ảo
+  var N     = list.length; // luôn chẵn
+  var rounds = N - 1;      // số lượt
+  var schedule = [];       // [{round, matches:[{a,b,idxA,idxB}]}]
+
+  for (var r = 0; r < rounds; r++) {
+    var roundMatches = [];
+    for (var m = 0; m < N / 2; m++) {
+      var a = list[m];
+      var b = list[N - 1 - m];
+      if (a !== '__BYE__' && b !== '__BYE__') {
+        // Chỉ lấy index gốc của đội để hiển thị số thứ tự
+        var idxA = teams.indexOf(a) + 1;
+        var idxB = teams.indexOf(b) + 1;
+        roundMatches.push({ a: a, b: b, idxA: idxA, idxB: idxB });
+      }
+    }
+    schedule.push({ round: r + 1, matches: roundMatches });
+    // Xoay: giữ list[0] cố định, xoay từ list[1] trở đi
+    var last = list.pop();
+    list.splice(1, 0, last);
+  }
+  return schedule; // [{round, matches:[{a,b,idxA,idxB}]}]
+}
+
+// Sinh prefix mã trận từ tên bảng: "Bảng A" → "A", "Bảng B" → "B", "Nhóm 1" → "N1"
+function bangPrefix(bangName) {
+  var clean = bangName.trim()
+    .replace(/bảng/gi,'').replace(/bang/gi,'').replace(/nhóm/gi,'').replace(/nhom/gi,'')
+    .replace(/group/gi,'').trim().toUpperCase();
+  // Lấy ký tự đầu tiên có nghĩa
+  var m = clean.match(/^([A-Z][0-9]?|[0-9]+)/);
+  if (m) return m[1];
+  // Fallback: 2 ký tự đầu
+  return bangName.replace(/[^A-Z0-9]/gi,'').substring(0,2).toUpperCase() || 'X';
+}
+
+function openAddBangMo(existingBang) {
+  if (!existingBang) existingBang = '';
   if (!_curNd || !_curTourn) { toast('Chọn nội dung trước','er'); return; }
-  document.getElementById('bang-mo-title').textContent = existingBang ? `Thêm trận vào ${existingBang}` : '＋ Thêm bảng đấu';
+  document.getElementById('bang-mo-title').textContent = existingBang ? ('Thêm trận vào ' + existingBang) : '＋ Thêm bảng đấu';
   document.getElementById('bang-name').value   = existingBang || '';
-  document.getElementById('bang-court').value  = '';
+  document.getElementById('bang-court').value  = ((_curTourn[3]||'').split(',')[0]||'').trim();
   document.getElementById('bang-round').value  = 'Vòng bảng';
   document.getElementById('bang-rule').value   = '11';
   document.getElementById('bang-teams').value  = '';
-  document.getElementById('bang-preview').style.display = 'none';
+  document.getElementById('bang-preview').style.display  = 'none';
+  document.getElementById('bang-import-result').style.display = 'none';
+  // Reset về tab nhập tay
+  bangTab(document.querySelector('#bang-tabs .tb'), 'bang-tp-manual');
   _bangRows = [];
   openMo('mo-bang');
 }
 
+// Chuyển tab trong modal bảng
+function bangTab(btn, panelId) {
+  document.querySelectorAll('#bang-tabs .tb').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.querySelectorAll('#mo-bang .tpanel').forEach(function(p){ p.classList.remove('on'); });
+  var el = document.getElementById(panelId);
+  if (el) el.classList.add('on');
+}
+
+// Auto preview khi nhập đội
+var _bangDbt = null;
+function autoPreviewBang() {
+  clearTimeout(_bangDbt);
+  _bangDbt = setTimeout(function(){
+    var teams = document.getElementById('bang-teams').value.trim().split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    if (teams.length >= 2) previewBang();
+  }, 400);
+}
+
 // ── Preview lịch round-robin ──
 function previewBang() {
-  const bang  = document.getElementById('bang-name').value.trim();
-  const court = document.getElementById('bang-court').value.trim();
-  const round = document.getElementById('bang-round').value.trim();
-  const teams = document.getElementById('bang-teams').value.trim().split('\n').map(l=>l.trim()).filter(Boolean);
-  if (!bang) { toast('Nhập tên bảng','er'); return; }
+  var bang  = document.getElementById('bang-name').value.trim();
+  var court = document.getElementById('bang-court').value.trim();
+  var round = document.getElementById('bang-round').value.trim() || 'Vòng bảng';
+  var teams = document.getElementById('bang-teams').value.trim().split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  if (!bang)  { toast('Nhập tên bảng','er'); return; }
   if (teams.length < 2) { toast('Cần ít nhất 2 đội','er'); return; }
-  const giaiId = String(_curTourn[0]||'');
-  const pfx    = bang.replace(/[^A-Z0-9]/gi,'').substring(0,3).toUpperCase();
+  if (teams.length > 20) { toast('Tối đa 20 đội mỗi bảng','er'); return; }
+
+  var giaiId  = String(_curTourn[0]||'');
+  var pfx     = bangPrefix(bang); // "A", "B"...
+  var schedule = roundRobinParallel(teams);
   _bangRows = [];
-  let idx = 1;
-  for (let i=0; i<teams.length; i++) {
-    for (let j=i+1; j<teams.length; j++) {
-      _bangRows.push([giaiId, _curNd, bang, pfx+idx, teams[i],'','',teams[j], court, round,'']);
-      idx++;
-    }
-  }
+  var matchIdx = 1;
+
+  // Flatten schedule → rows với mã A1, A2... theo thứ tự lượt
+  schedule.forEach(function(lv){
+    lv.matches.forEach(function(m){
+      var maCode = pfx + matchIdx;
+      _bangRows.push([giaiId, _curNd, bang, maCode, m.a, '', '', m.b, court, round, '']);
+      matchIdx++;
+    });
+  });
+
+  // Build preview HTML with round grouping
   document.getElementById('bang-match-count').textContent = _bangRows.length;
-  document.getElementById('bang-preview-list').innerHTML = _bangRows.map((r,i) =>
-    `<div style="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;gap:10px;align-items:center">
-      <span class="mono" style="color:var(--ac);min-width:40px">${r[3]}</span>
-      <span style="font-weight:600;flex:1">${r[4]}</span>
-      <span style="color:var(--tx3)">vs</span>
-      <span style="flex:1;text-align:right">${r[7]}</span>
-    </div>`
-  ).join('');
+  document.getElementById('bang-team-count').textContent  = teams.length;
+
+  var html = '';
+  var idx  = 0;
+  schedule.forEach(function(lv){
+    if (!lv.matches.length) return;
+    html += '<div style="margin-bottom:6px">';
+    html += '<div style="font-size:10px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;padding:2px 6px;background:rgba(245,158,11,.1);border-radius:4px;display:inline-block">Lượt ' + lv.round + ' — đấu đồng thời</div>';
+    lv.matches.forEach(function(m){
+      var row = _bangRows[idx++];
+      html += '<div style="padding:4px 6px;border-bottom:1px solid var(--bdr);display:flex;gap:8px;align-items:center">';
+      html += '<span style="font-family:var(--mo);color:var(--ac);min-width:36px;font-size:11px">' + row[3] + '</span>';
+      html += '<span style="color:var(--tx3);font-size:10px;min-width:32px">' + m.idxA + ' vs ' + m.idxB + '</span>';
+      html += '<span style="font-weight:600;flex:1;font-size:12px">' + m.a + '</span>';
+      html += '<span style="color:var(--tx3);font-size:11px">vs</span>';
+      html += '<span style="flex:1;text-align:right;font-size:12px">' + m.b + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  // Hiển thị danh sách đội đánh số
+  html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)">';
+  html += '<div style="font-size:10px;color:var(--tx3);margin-bottom:4px">DANH SÁCH ĐỘI:</div>';
+  teams.forEach(function(t,i){
+    html += '<span style="font-size:11px;color:var(--tx2);margin-right:12px"><b style="color:var(--ac)">' + (i+1) + '.</b> ' + t + '</span>';
+  });
+  html += '</div>';
+
+  document.getElementById('bang-preview-list').innerHTML = html;
   document.getElementById('bang-preview').style.display = 'block';
+}
+
+// ── Handle import CSV/Excel ──
+function handleBangImport(inp) {
+  var f = inp.files[0];
+  if (!f) return;
+  var ext = f.name.split('.').pop().toLowerCase();
+
+  if (ext === 'xlsx' || ext === 'xls') {
+    toast('Đang đọc file Excel...','in');
+    var fr = new FileReader();
+    fr.onload = function(e) {
+      try {
+        // Parse Excel với SheetJS nếu có, không thì báo dùng CSV
+        if (typeof XLSX !== 'undefined') {
+          var wb    = XLSX.read(e.target.result, {type:'binary'});
+          var ws    = wb.Sheets[wb.SheetNames[0]];
+          var data  = XLSX.utils.sheet_to_json(ws, {header:1});
+          var teams = data.map(function(row){return String(row[0]||'').trim();}).filter(Boolean);
+          setBangTeams(teams);
+        } else {
+          toast('⚠️ Trình duyệt chưa tải SheetJS. Dùng file CSV thay thế.','er');
+        }
+      } catch(e) { toast('Lỗi đọc Excel: '+e.message,'er'); }
+    };
+    fr.readAsBinaryString(f);
+  } else {
+    // CSV / TXT
+    var fr = new FileReader();
+    fr.onload = function(e) {
+      var lines = e.target.result.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+      // Bỏ header nếu dòng 1 giống header
+      var teams = lines;
+      if (lines.length && /^(đội|team|tên|name|stt|no)/i.test(lines[0])) {
+        teams = lines.slice(1);
+      }
+      // Nếu có nhiều cột (CSV), chỉ lấy cột đầu
+      teams = teams.map(function(l){return l.split(',')[0].split('\t')[0].trim();}).filter(Boolean);
+      setBangTeams(teams);
+    };
+    fr.readAsText(f, 'UTF-8');
+  }
+}
+
+function setBangTeams(teams) {
+  if (!teams.length) { toast('Không đọc được tên đội từ file','er'); return; }
+  document.getElementById('bang-teams').value = teams.join('\n');
+  var res = document.getElementById('bang-import-result');
+  res.textContent = '✅ Đã import ' + teams.length + ' đội từ file';
+  res.style.display = 'block';
+  // Chuyển về tab nhập tay để thấy danh sách
+  bangTab(document.querySelector('#bang-tabs .tb'), 'bang-tp-manual');
+  previewBang();
+  toast('✅ Import ' + teams.length + ' đội thành công','ok');
+}
+
+// Tải file mẫu CSV cho import bảng
+function dlBangTemplate() {
+  var csv = 'Nguyễn Văn A - Trần Văn B\nLê Thị C - Phạm Thị D\nHoàng Văn E - Vũ Thị F\nĐặng Văn G - Bùi Thị H\nPhan Thị I - Ngô Văn K';
+  var a   = document.createElement('a');
+  a.href     = 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'danh_sach_doi_mau.csv';
+  a.click();
 }
 
 // ── Lưu bảng + đẩy lịch lên GAS ──
 async function saveBang() {
   if (!_bangRows.length) { previewBang(); if (!_bangRows.length) return; }
-  const btn = document.getElementById('bang-save-btn');
+  var btn = document.getElementById('bang-save-btn');
   btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
   closeMo('mo-bang');
-  toast(`⏳ Đang tạo ${_bangRows.length} trận...`,'in');
-  let added=0, skipped=0;
-  const chunks=[];
-  for(let i=0;i<_bangRows.length;i+=5) chunks.push(_bangRows.slice(i,i+5));
-  for(const ch of chunks) {
-    await Promise.all(ch.map(async row=>{
-      try{const d=await gPost({action:'addMatchAdmin',adminCode:CODE,row});d.ok?added++:skipped++;}
+  toast('⏳ Đang tạo ' + _bangRows.length + ' trận...','in');
+  var added=0, skipped=0;
+  var chunks=[];
+  for(var i=0;i<_bangRows.length;i+=5) chunks.push(_bangRows.slice(i,i+5));
+  for(var ci=0;ci<chunks.length;ci++) {
+    await Promise.all(chunks[ci].map(async function(row){
+      try{var d=await gPost({action:'addMatchAdmin',adminCode:CODE,row});d.ok?added++:skipped++;}
       catch(e){skipped++;}
     }));
   }
-  toast(`✅ Tạo xong: ${added} trận mới, ${skipped} bỏ qua`,'ok');
+  toast('✅ Tạo xong: '+added+' trận mới, '+skipped+' bỏ qua','ok');
   btn.disabled=false; btn.textContent='💾 Tạo bảng + lịch đấu';
-  // Reload matches cache rồi re-render
   await loadMatchesCache(String(_curTourn[0]||''));
   renderBangList(String(_curTourn[0]||''), _curNd);
 }
