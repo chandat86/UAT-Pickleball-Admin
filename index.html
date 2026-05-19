@@ -362,16 +362,58 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     </div>
 
     <!-- ══ TOURNAMENTS ══ -->
+    <!-- ══ TOURNAMENTS ══ -->
     <div class="page" id="page-tournaments">
-      <div class="ph">
-        <div><div class="ptitle">🏆 Quản lý Giải đấu</div><div class="psub">Tạo và quản lý các giải, phân Manager cho từng giải</div></div>
-        <button class="btn bp" id="btn-add-tourn" onclick="openTournMo()">＋ Tạo giải đấu</button>
+      <!-- VIEW 1: Danh sách giải -->
+      <div id="tv-list">
+        <div class="ph">
+          <div><div class="ptitle">🏆 Quản lý Giải đấu</div><div class="psub">Chọn giải để xem nội dung và lịch thi đấu</div></div>
+          <button class="btn bp" onclick="openTournMo()">＋ Tạo giải đấu</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px" id="tourn-cards">
+          <div class="empty" style="grid-column:1/-1"><span class="spin"></span></div>
+        </div>
       </div>
-      <div class="tw">
-        <table class="tbl">
-          <thead><tr><th>Mã giải</th><th>Tên giải</th><th>Địa điểm</th><th>Cụm sân</th><th>Ngày</th><th>Trạng thái</th><th>Manager</th><th></th></tr></thead>
-          <tbody id="tourn-tb"><tr><td colspan="8" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
-        </table>
+
+      <!-- VIEW 2: Chi tiết giải (Nội dung thi đấu) -->
+      <div id="tv-detail" style="display:none">
+        <div class="ph">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="rfbtn" onclick="showTournView('list')" style="padding:6px 10px">← Quay lại</button>
+            <div>
+              <div class="ptitle" id="td-name">—</div>
+              <div class="psub" id="td-sub">—</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bh" onclick="openAddNdMo()">＋ Thêm nội dung</button>
+            <button class="btn bp" onclick="openBracketMo()">🏆 Xem bracket</button>
+          </div>
+        </div>
+
+        <!-- Nội dung cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" id="nd-cards">
+          <div class="empty" style="grid-column:1/-1"><span class="spin"></span></div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: Chi tiết nội dung (Bảng + VĐV) -->
+      <div id="tv-nd" style="display:none">
+        <div class="ph">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="rfbtn" onclick="showTournView('detail')" style="padding:6px 10px">← Quay lại</button>
+            <div>
+              <div class="ptitle" id="tv-nd-title">—</div>
+              <div class="psub" id="tv-nd-sub">—</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bh" onclick="openAddBangMo()">＋ Thêm bảng</button>
+            <button class="btn bp" onclick="openBracketMo()">🏆 Bracket</button>
+          </div>
+        </div>
+
+        <div id="bang-list" style="display:flex;flex-direction:column;gap:14px"></div>
       </div>
     </div>
 
@@ -570,24 +612,46 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 </div></div>
 
 <!-- Tournament Modal -->
-<div class="mo" id="mo-tourn"><div class="mbox w">
+<div class="mo" id="mo-tourn"><div class="mbox ww">
   <div class="mh"><div class="mtt" id="tourn-tt">Tạo giải đấu</div><button class="mc" onclick="closeMo('mo-tourn')">✕</button></div>
-  <div class="fgrid">
-    <div class="fg"><label>Mã giải *</label><input type="text" id="t-id" placeholder="NH2025" style="font-family:var(--mo)"></div>
-    <div class="fg"><label>Tên giải *</label><input type="text" id="t-name" placeholder="Giải Ngân Hàng 2025"></div>
-    <div class="fg"><label>Địa điểm / Cụm sân</label><input type="text" id="t-venue" placeholder="Sân AK, Đà Nẵng"></div>
-    <div class="fg"><label>Trạng thái</label>
-      <select id="t-status"><option value="active">🟢 Đang diễn ra</option><option value="upcoming">⏳ Sắp diễn ra</option><option value="done">✅ Đã kết thúc</option></select></div>
+
+  <!-- Mã giải tự động -->
+  <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:9px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:12px;color:var(--tx3);white-space:nowrap">Mã giải:</span>
+    <span id="t-id-display" style="font-family:var(--mo);font-size:13px;color:var(--ac);font-weight:700;flex:1">—</span>
+    <input type="hidden" id="t-id">
+    <span style="font-size:11px;color:var(--tx3)">Tự động tạo khi lưu</span>
+    <div id="t-id-edit-wrap" style="display:none;flex:1">
+      <input type="text" id="t-id-edit" style="font-family:var(--mo);font-size:13px;background:transparent;border:none;outline:none;color:var(--ac);width:100%" placeholder="Mã sẽ hiển thị sau khi nhập tên">
+    </div>
+  </div>
+
+  <div class="fgrid t3">
+    <div class="fg full" style="grid-column:1/-1"><label>Tên giải *</label>
+      <input type="text" id="t-name" placeholder="Ngân Hàng Đà Nẵng 2025" oninput="onTournNameInput(this.value)">
+    </div>
+    <div class="fg"><label>Cụm sân *</label>
+      <input type="text" id="t-venue" placeholder="Sân AK Đà Nẵng">
+      <span class="hint">Tên khu vực / địa điểm tổ chức</span></div>
     <div class="fg"><label>Ngày bắt đầu</label><input type="date" id="t-start"></div>
     <div class="fg"><label>Ngày kết thúc</label><input type="date" id="t-end"></div>
-    <div class="fg full"><label>Danh sách sân (phân cách phẩy)</label>
-      <input type="text" id="t-courts" placeholder="Sân 1,Sân 2,Sân 3,...,Sân 10">
-      <span class="hint">Dùng để chọn sân nhanh khi phân công</span></div>
-    <div class="fg full"><label>Ghi chú</label><input type="text" id="t-note" placeholder=""></div>
+    <div class="fg full"><label>Danh sách sân (phân cách bằng dấu phẩy)</label>
+      <input type="text" id="t-courts" placeholder="Sân A1, Sân A2, Sân A3, Sân B1, Sân B2">
+      <span class="hint">Dùng khi phân công trọng tài nhanh theo sân</span></div>
+    <div class="fg full"><label>Nội dung thi đấu (phân cách bằng dấu phẩy)</label>
+      <input type="text" id="t-noidung" placeholder="Đôi Nam 7.0, Đôi Nữ Vui Vẻ, Đôi Hỗn Hợp 5.6">
+      <span class="hint">Liệt kê các nội dung — hiển thị trên dashboard và lọc lịch</span></div>
+    <div class="fg"><label>Trạng thái</label>
+      <select id="t-status">
+        <option value="active">🟢 Đang diễn ra</option>
+        <option value="upcoming">⏳ Sắp diễn ra</option>
+        <option value="done">✅ Đã kết thúc</option>
+      </select></div>
+    <div class="fg"><label>Ghi chú</label><input type="text" id="t-note" placeholder="Nhà tài trợ, ghi chú thêm..."></div>
   </div>
   <div class="mf">
     <button class="btn bh" onclick="closeMo('mo-tourn')">Hủy</button>
-    <button class="btn bp" id="t-save" onclick="saveTournament()">💾 Lưu</button>
+    <button class="btn bp" id="t-save" onclick="saveTournament()">💾 Lưu giải đấu</button>
   </div>
 </div></div>
 
@@ -778,6 +842,70 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
   </div>
 </div></div>
 
+
+<!-- ══ TOURNAMENT MODALS ══ -->
+
+<!-- Thêm nội dung thi đấu -->
+<div class="mo" id="mo-nd"><div class="mbox">
+  <div class="mh"><div class="mtt">＋ Thêm nội dung thi đấu</div><button class="mc" onclick="closeMo('mo-nd')">✕</button></div>
+  <div class="fg"><label>Tên nội dung *</label>
+    <input type="text" id="nd-name" placeholder="Đôi Nam 7.0" style="font-size:15px">
+    <span class="hint">VD: Đôi Nam 7.0 · Đôi Nữ Vui Vẻ · Đôi Hỗn Hợp 5.6</span></div>
+  <div class="mf">
+    <button class="btn bh" onclick="closeMo('mo-nd')">Hủy</button>
+    <button class="btn bp" onclick="saveNoidung()">Thêm</button>
+  </div>
+</div></div>
+
+<!-- Thêm bảng đấu + nhập VĐV -->
+<div class="mo" id="mo-bang"><div class="mbox w">
+  <div class="mh"><div class="mtt" id="bang-mo-title">＋ Thêm bảng đấu</div><button class="mc" onclick="closeMo('mo-bang')">✕</button></div>
+  <div class="fgrid">
+    <div class="fg"><label>Tên bảng *</label>
+      <input type="text" id="bang-name" placeholder="Bảng A">
+      <span class="hint">Đặt tên bảng: A, B, C... hoặc tùy ý</span></div>
+    <div class="fg"><label>Sân thi đấu</label>
+      <input type="text" id="bang-court" placeholder="Sân 1"></div>
+    <div class="fg"><label>Vòng đấu</label>
+      <input type="text" id="bang-round" placeholder="Vòng bảng"></div>
+    <div class="fg"><label>Quy tắc điểm</label>
+      <select id="bang-rule">
+        <option value="11">Chạm 11</option>
+        <option value="15">Chạm 15</option>
+        <option value="21">Chạm 21</option>
+      </select></div>
+  </div>
+  <div class="fg full"><label>Danh sách VĐV / Đội — mỗi dòng 1 đội</label>
+    <textarea id="bang-teams" rows="10" placeholder="Nguyễn Văn A - Trần Văn B&#10;Lê Thị C - Phạm Thị D&#10;Hoàng Văn E - Vũ Thị F&#10;Đặng Văn G - Bùi Thị H&#10;..."></textarea>
+    <span class="hint">Tối thiểu 2 đội để tạo lịch Round-Robin tự động</span></div>
+  <div id="bang-preview" style="display:none;margin-top:8px">
+    <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:6px">XEM TRƯỚC LỊCH — <span id="bang-match-count">0</span> trận</div>
+    <div style="max-height:160px;overflow-y:auto;background:var(--bg3);border-radius:8px;padding:10px;font-size:12px" id="bang-preview-list"></div>
+  </div>
+  <div class="mf">
+    <button class="btn bh" onclick="previewBang()">👁 Xem trước lịch</button>
+    <button class="btn bh" onclick="closeMo('mo-bang')">Hủy</button>
+    <button class="btn bp" id="bang-save-btn" onclick="saveBang()">💾 Tạo bảng + lịch đấu</button>
+  </div>
+</div></div>
+
+<!-- Bracket viewer -->
+<div class="mo" id="mo-bracket"><div class="mbox xl" style="max-height:95vh">
+  <div class="mh">
+    <div>
+      <div class="mtt">🏆 Bracket thi đấu</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:2px" id="bracket-sub">—</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select class="fsel" id="bracket-nd-sel" onchange="renderBracket()"></select>
+      <button class="mc" onclick="closeMo('mo-bracket')">✕</button>
+    </div>
+  </div>
+  <div style="overflow:auto;max-height:75vh">
+    <div id="bracket-wrap" style="min-width:600px;padding:16px"></div>
+  </div>
+</div></div>
+
 <div id="toast"></div>
 
 <script>
@@ -887,6 +1015,8 @@ async function prefetchAll() {
     _T = tRes.rows?.slice(1) || [];
     _M = mRes.rows?.slice(1) || [];
     populateTournamentDropdowns();
+    // Render tournament cards nếu đang ở trang tournaments
+    if (document.getElementById('tv-list')) renderTournCards(_T);
   } catch(e) { /* bỏ qua lỗi prefetch */ }
   loadDash();
 }
@@ -1112,89 +1242,645 @@ function showStatMo(type) {
 // ════════════════════════════════════════════════════════════════
 //  TOURNAMENTS
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+//  TOURNAMENTS — v3 full
+//  State: _T (cache), _curTourn, _curNd
+// ════════════════════════════════════════════════════════════════
+let _curTourn = null; // giải đang xem
+let _curNd    = null; // nội dung đang xem
+let _bangRows = [];   // preview lịch bảng
+
+// ── Chuyển view (list | detail | nd) ──
+function showTournView(v) {
+  document.getElementById('tv-list').style.display   = v === 'list'   ? 'block' : 'none';
+  document.getElementById('tv-detail').style.display = v === 'detail' ? 'block' : 'none';
+  document.getElementById('tv-nd').style.display     = v === 'nd'     ? 'block' : 'none';
+}
+
+// ── Load danh sách giải ──
 async function loadTournaments() {
-  document.getElementById('tourn-tb').innerHTML = spin(8);
+  showTournView('list');
+  document.getElementById('tourn-cards').innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="spin"></span></div>';
   try {
     const d = await gGet({ action: 'tournaments' });
     _T = d.rows?.slice(1) || [];
     populateTournamentDropdowns();
-    renderTournaments(_T);
+    renderTournCards(_T);
   } catch(e) { toast('Lỗi kết nối', 'er'); }
 }
 
-function renderTournaments(rows) {
-  const tb = document.getElementById('tourn-tb');
-  if (!rows.length) { tb.innerHTML = emptyRow(8,'🏆','Chưa có giải đấu'); return; }
-  tb.innerHTML = rows.map(r => {
-    const st = String(r[6]||'active');
-    const sb = st==='active' ? '<span class="bdg bo">🟢 Active</span>'
-             : st==='done'   ? '<span class="bdg bg0">✅ Kết thúc</span>'
-             : '<span class="bdg bw">⏳ Sắp diễn ra</span>';
-    const id = esc(r[0]);
-    return `<tr>
-      <td><span class="mono">${r[0]}</span></td>
-      <td style="font-weight:700">${r[1]||'—'}</td>
-      <td style="font-size:12px;color:var(--tx2)">${r[2]||'—'}</td>
-      <td style="font-size:11px;color:var(--tx3)">${(r[3]||'').split(',').slice(0,3).join(', ')}${(r[3]||'').split(',').length>3?' ...':''}</td>
-      <td style="font-size:12px;color:var(--tx3)">${fmtD(r[4])} → ${fmtD(r[5])}</td>
-      <td>${sb}</td>
-      <td id="mgr-${id}" style="font-size:12px;color:var(--cy)">—</td>
-      <td><div style="display:flex;gap:4px">
-        <button class="btn bh bsm" onclick="editTourn('${id}')">✏️</button>
-        <button class="btn br bsm" onclick="delTourn('${id}','${esc(r[1])}')">🗑</button>
-      </div></td></tr>`;
+// ── Render card giải đấu ──
+function renderTournCards(rows) {
+  const wrap = document.getElementById('tourn-cards');
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ei">🏆</div><p>Chưa có giải đấu nào. Nhấn "+ Tạo giải đấu" để bắt đầu.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = rows.map(r => {
+    const st  = String(r[6]||'active');
+    const stc = st==='active'?'var(--gn)':st==='done'?'var(--tx3)':'var(--or)';
+    const stl = st==='active'?'🟢 Đang diễn ra':st==='done'?'✅ Kết thúc':'⏳ Sắp diễn ra';
+    const nds = (r[7]||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const sans= (r[3]||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const mgr = _U.find(u=>String(u[8]||'')===String(r[0]||'')&&String(u[7]||'').toLowerCase()==='manager');
+    const id  = esc(r[0]);
+    return `<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:16px;cursor:pointer;transition:all .15s"
+              onmouseover="this.style.borderColor='var(--ac)'" onmouseout="this.style.borderColor='var(--bdr)'"
+              onclick="openTournDetail('${id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-family:var(--mo);font-size:11px;color:var(--ac);font-weight:600;margin-bottom:3px">${r[0]}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--tx)">${r[1]||'—'}</div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:2px">${r[2]||''}</div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:${stc};white-space:nowrap">${stl}</span>
+      </div>
+      <div style="border-top:1px solid var(--bdr);padding-top:10px;margin-top:4px">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px">Nội dung thi đấu</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+          ${nds.length ? nds.map(n=>`<span class="ptag" style="font-size:11px">${n}</span>`).join('') : '<span style="font-size:11px;color:var(--tx3)">Chưa có nội dung</span>'}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:11px;color:var(--tx3)">${sans.length} sân · ${fmtD(r[4])} → ${fmtD(r[5])}</div>
+          <div style="display:flex;gap:5px" onclick="event.stopPropagation()">
+            <button class="btn bh bsm" onclick="editTourn('${id}')">✏️</button>
+            <button class="btn br bsm" onclick="delTourn('${id}','${esc(r[1])}')">🗑</button>
+          </div>
+        </div>
+        ${mgr?`<div style="font-size:11px;color:var(--cy);margin-top:4px">👤 Manager: ${mgr[1]}</div>`:''}
+      </div>
+    </div>`;
   }).join('');
-  // Gắn manager name (từ Users cache)
-  rows.forEach(r => {
-    const mgr = _U.find(u => String(u[8]||'')=== String(r[0]||'') && String(u[7]||'').toLowerCase()==='manager');
-    const el = document.getElementById('mgr-'+esc(r[0]));
-    if (el && mgr) el.textContent = mgr[1];
-  });
 }
 
-function openTournMo(pre=null) {
-  _editT = pre;
-  document.getElementById('tourn-tt').textContent = pre ? 'Sửa giải đấu' : 'Tạo giải đấu mới';
-  document.getElementById('t-id').value     = pre?.id    || ''; document.getElementById('t-id').disabled = !!pre;
-  document.getElementById('t-name').value   = pre?.name  || '';
-  document.getElementById('t-venue').value  = pre?.venue || '';
-  document.getElementById('t-courts').value = pre?.courts|| '';
-  document.getElementById('t-start').value  = pre?.start || '';
-  document.getElementById('t-end').value    = pre?.end   || '';
-  document.getElementById('t-status').value = pre?.status|| 'active';
-  document.getElementById('t-note').value   = pre?.note  || '';
-  document.getElementById('t-save').disabled = false;
-  openMo('mo-tourn');
-}
-function editTourn(id) {
+// ── Click giải → View Detail ──
+function openTournDetail(id) {
   const r = _T.find(t => String(t[0]||'') === id);
   if (!r) return;
-  openTournMo({id:r[0],name:r[1],venue:r[2],courts:r[3],start:isoD(r[4]),end:isoD(r[5]),status:r[6],note:r[7]});
+  _curTourn = r;
+  document.getElementById('td-name').textContent = r[1] || id;
+  document.getElementById('td-sub').textContent  = (r[2]||'') + (r[4]?' · '+fmtD(r[4])+' → '+fmtD(r[5]):'');
+  showTournView('detail');
+  renderNdCards(r);
+}
+
+// ── Render cards nội dung thi đấu ──
+function renderNdCards(r) {
+  const nds  = (r[7]||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const wrap = document.getElementById('nd-cards');
+  if (!nds.length) {
+    wrap.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="ei">📋</div>
+      <p>Chưa có nội dung thi đấu</p>
+      <button class="btn bp" style="margin-top:10px" onclick="openAddNdMo()">＋ Thêm nội dung</button>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML = nds.map((nd, i) => {
+    const colors = ['var(--ac)','var(--gn)','var(--or)','var(--pu)','var(--cy)'];
+    const c = colors[i % colors.length];
+    const ndId = esc(nd);
+    // Đếm trận trong nội dung này từ cache _M
+    const matchCount = _M.filter(m => String(m[0]||'')===String(r[0]||'') && String(m[1]||'')===nd).length;
+    const bangs = [...new Set(_M.filter(m=>String(m[0]||'')===String(r[0]||'')&&String(m[1]||'')===nd).map(m=>String(m[2]||'')).filter(Boolean))];
+    return `<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:16px;
+              cursor:pointer;transition:all .15s;border-top:3px solid ${c}"
+              onmouseover="this.style.boxShadow='0 0 0 1px ${c}33'" onmouseout="this.style.boxShadow='none'"
+              onclick="openNdDetail('${esc(String(r[0]||''))}','${ndId}')">
+      <div style="font-size:16px;font-weight:800;color:var(--tx);margin-bottom:6px">${nd}</div>
+      <div style="font-size:12px;color:var(--tx3);margin-bottom:10px">${matchCount} trận · ${bangs.length} bảng</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
+        ${bangs.length ? bangs.map(b=>`<span class="ptag" style="font-size:11px">${b}</span>`).join('')
+          : '<span style="font-size:11px;color:var(--tx3)">Chưa có bảng nào</span>'}
+      </div>
+      <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+        <button class="btn bp bsm" style="flex:1" onclick="openNdDetail('${esc(String(r[0]||''))}','${ndId}')">📋 Xem bảng đấu</button>
+        <button class="btn bh bsm" onclick="openBracketForNd('${esc(String(r[0]||''))}','${ndId}')">🏆 Bracket</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Click nội dung → View Bảng ──
+function openNdDetail(giaiId, nd) {
+  _curNd = nd;
+  const r = _T.find(t=>String(t[0]||'')===giaiId);
+  if (!r) return;
+  _curTourn = r;
+  document.getElementById('tv-nd-title').textContent = nd;
+  document.getElementById('tv-nd-sub').textContent   = (r[1]||giaiId) + ' · ' + (r[2]||'');
+  showTournView('nd');
+  renderBangList(giaiId, nd);
+}
+
+// ── Render danh sách bảng + trận ──
+function renderBangList(giaiId, nd) {
+  const wrap   = document.getElementById('bang-list');
+  const bangs  = [...new Set(_M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd).map(m=>String(m[2]||'')).filter(Boolean))];
+  if (!bangs.length) {
+    wrap.innerHTML = `<div class="empty"><div class="ei">📋</div><p>Chưa có bảng nào</p>
+      <button class="btn bp" style="margin-top:10px" onclick="openAddBangMo()">＋ Thêm bảng đấu</button></div>`;
+    return;
+  }
+  wrap.innerHTML = bangs.map(bang => {
+    const matches = _M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd&&String(m[2]||'')===bang);
+    const teams   = [...new Set(matches.flatMap(m=>[m[4],m[7]]).filter(Boolean))];
+    const doneC   = matches.filter(m=>{const k=`${m[0]}|${m[2]}|${m[3]}`;return _dK.has(k);}).length;
+    const liveC   = matches.filter(m=>{const k=`${m[0]}|${m[2]}|${m[3]}`;return _lK.has(k);}).length;
+    return `<div class="card" style="margin-bottom:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <span style="font-size:16px;font-weight:800;color:var(--ac)">${bang}</span>
+          <span style="font-size:12px;color:var(--tx3);margin-left:10px">${matches.length} trận · ${teams.length} đội</span>
+          ${liveC?`<span class="bdg bw" style="margin-left:6px">🟠 ${liveC} live</span>`:''}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bh bsm" onclick="openBracketForNd('${esc(giaiId)}','${esc(nd)}')">🏆 Bracket</button>
+          <button class="btn bp bsm" onclick="openAddBangMo('${esc(bang)}')">＋ Thêm trận</button>
+        </div>
+      </div>
+      <!-- Progress -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${matches.length?Math.round(doneC/matches.length*100):0}%;background:linear-gradient(90deg,var(--ac),var(--gn));border-radius:3px;transition:width .5s"></div>
+        </div>
+        <span style="font-size:11px;color:var(--tx3);white-space:nowrap">${doneC}/${matches.length} xong</span>
+      </div>
+      <!-- Match list -->
+      <div class="tw">
+        <table class="tbl" style="font-size:12px">
+          <thead><tr><th>Mã</th><th>Đội A</th><th style="text-align:center">A</th><th style="text-align:center">B</th><th>Đội B</th><th>Sân</th><th>Trạng thái</th></tr></thead>
+          <tbody>
+            ${matches.length ? matches.map(m => {
+              const k   = `${m[0]}|${m[2]}|${m[3]}`;
+              const done = _dK.has(k), live = _lK.has(k);
+              const sb  = done?'<span class="bdg bo" style="font-size:10px">✅</span>':live?'<span class="bdg bw" style="font-size:10px">🟠</span>':'<span class="bdg bg0" style="font-size:10px">⬜</span>';
+              return `<tr>
+                <td><span class="mono">${m[3]}</span></td>
+                <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
+                <td style="text-align:center;font-family:var(--mo);color:var(--ac);font-weight:700">${m[5]!==''&&m[5]!==undefined?m[5]:'—'}</td>
+                <td style="text-align:center;font-family:var(--mo);color:var(--or);font-weight:700">${m[6]!==''&&m[6]!==undefined?m[6]:'—'}</td>
+                <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
+                <td style="color:var(--ac2);font-size:11px">${m[8]||'—'}</td>
+                <td>${sb}</td>
+              </tr>`;
+            }).join('') : `<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--tx3)">Chưa có trận</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Mở modal thêm nội dung ──
+function openAddNdMo() {
+  document.getElementById('nd-name').value = '';
+  openMo('mo-nd');
+  setTimeout(()=>document.getElementById('nd-name').focus(),100);
+}
+
+async function saveNoidung() {
+  const nd = document.getElementById('nd-name').value.trim();
+  if (!nd) { toast('Vui lòng nhập tên nội dung','er'); return; }
+  if (!_curTourn) { toast('Chưa chọn giải','er'); return; }
+  const id = String(_curTourn[0]||'');
+  // Cập nhật cột ghi chú của Tournaments (lưu nội dung)
+  const current = ((_curTourn[7]||'').split(',').map(s=>s.trim()).filter(Boolean));
+  if (current.includes(nd)) { toast('Nội dung đã tồn tại','er'); return; }
+  current.push(nd);
+  closeMo('mo-nd');
+  toast(`✅ Đã thêm nội dung "${nd}"...`,'ok');
+  try {
+    const d = await gPost({ action:'updateTournament', adminCode:CODE, tournament:{
+      id, name:_curTourn[1], venue:_curTourn[2], courts:_curTourn[3],
+      startDate:_curTourn[4], endDate:_curTourn[5], status:_curTourn[6],
+      note: current.join(',')
+    }});
+    if (!d.ok) toast('Lỗi: '+d.reason,'er');
+    // Cập nhật cache
+    const idx = _T.findIndex(t=>String(t[0]||'')===id);
+    if (idx>=0) { _T[idx][7] = current.join(','); _curTourn = _T[idx]; }
+    renderNdCards(_curTourn);
+  } catch(e) { toast('Lỗi kết nối','er'); }
+}
+
+// ── Mở modal thêm bảng ──
+function openAddBangMo(existingBang='') {
+  if (!_curNd || !_curTourn) { toast('Chọn nội dung trước','er'); return; }
+  document.getElementById('bang-mo-title').textContent = existingBang ? `Thêm trận vào ${existingBang}` : '＋ Thêm bảng đấu';
+  document.getElementById('bang-name').value   = existingBang || '';
+  document.getElementById('bang-court').value  = '';
+  document.getElementById('bang-round').value  = 'Vòng bảng';
+  document.getElementById('bang-rule').value   = '11';
+  document.getElementById('bang-teams').value  = '';
+  document.getElementById('bang-preview').style.display = 'none';
+  _bangRows = [];
+  openMo('mo-bang');
+}
+
+// ── Preview lịch round-robin ──
+function previewBang() {
+  const bang  = document.getElementById('bang-name').value.trim();
+  const court = document.getElementById('bang-court').value.trim();
+  const round = document.getElementById('bang-round').value.trim();
+  const teams = document.getElementById('bang-teams').value.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+  if (!bang) { toast('Nhập tên bảng','er'); return; }
+  if (teams.length < 2) { toast('Cần ít nhất 2 đội','er'); return; }
+  const giaiId = String(_curTourn[0]||'');
+  const pfx    = bang.replace(/[^A-Z0-9]/gi,'').substring(0,3).toUpperCase();
+  _bangRows = [];
+  let idx = 1;
+  for (let i=0; i<teams.length; i++) {
+    for (let j=i+1; j<teams.length; j++) {
+      _bangRows.push([giaiId, _curNd, bang, pfx+idx, teams[i],'','',teams[j], court, round,'']);
+      idx++;
+    }
+  }
+  document.getElementById('bang-match-count').textContent = _bangRows.length;
+  document.getElementById('bang-preview-list').innerHTML = _bangRows.map((r,i) =>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;gap:10px;align-items:center">
+      <span class="mono" style="color:var(--ac);min-width:40px">${r[3]}</span>
+      <span style="font-weight:600;flex:1">${r[4]}</span>
+      <span style="color:var(--tx3)">vs</span>
+      <span style="flex:1;text-align:right">${r[7]}</span>
+    </div>`
+  ).join('');
+  document.getElementById('bang-preview').style.display = 'block';
+}
+
+// ── Lưu bảng + đẩy lịch lên GAS ──
+async function saveBang() {
+  if (!_bangRows.length) { previewBang(); if (!_bangRows.length) return; }
+  const btn = document.getElementById('bang-save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
+  closeMo('mo-bang');
+  toast(`⏳ Đang tạo ${_bangRows.length} trận...`,'in');
+  let added=0, skipped=0;
+  const chunks=[];
+  for(let i=0;i<_bangRows.length;i+=5) chunks.push(_bangRows.slice(i,i+5));
+  for(const ch of chunks) {
+    await Promise.all(ch.map(async row=>{
+      try{const d=await gPost({action:'addMatchAdmin',adminCode:CODE,row});d.ok?added++:skipped++;}
+      catch(e){skipped++;}
+    }));
+  }
+  toast(`✅ Tạo xong: ${added} trận mới, ${skipped} bỏ qua`,'ok');
+  btn.disabled=false; btn.textContent='💾 Tạo bảng + lịch đấu';
+  // Reload matches cache rồi re-render
+  await loadMatchesCache(String(_curTourn[0]||''));
+  renderBangList(String(_curTourn[0]||''), _curNd);
+}
+
+// Load matches nhẹ (chỉ lấy cache, không render table)
+async function loadMatchesCache(giaiId='') {
+  try {
+    const [md,rd,ld] = await Promise.all([
+      gGet({action:'matches',giai:giaiId}),
+      gGet({action:'results',giai:giaiId}),
+      gGet({action:'live',code:'all',giai:giaiId})
+    ]);
+    if(giaiId) {
+      // Merge: giữ matches giải khác, thêm matches giải mới
+      _M = _M.filter(m=>String(m[0]||'')!==giaiId).concat(md.rows?.slice(1)||[]);
+    } else {
+      _M = md.rows?.slice(1)||[];
+    }
+    _dK = new Set((rd.rows?.slice(1)||[]).map(r=>`${r[1]}|${r[3]}|${r[4]}`));
+    _lK = new Set((ld.rows?.slice(1)||[]).map(r=>String(r[0]||'')));
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════════════
+//  BRACKET VIEWER
+// ════════════════════════════════════════════════════════════════
+function openBracketMo() {
+  if (!_curTourn) return;
+  openBracketForNd(String(_curTourn[0]||''), _curNd||'');
+}
+function openBracketForNd(giaiId, nd) {
+  const r = _T.find(t=>String(t[0]||'')===giaiId);
+  if (!r) return;
+  document.getElementById('bracket-sub').textContent = (r[1]||giaiId) + (nd?' · '+nd:'');
+  // Populate nội dung select
+  const nds = (r[7]||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const sel = document.getElementById('bracket-nd-sel');
+  sel.innerHTML = '<option value="">— Tất cả nội dung —</option>' + nds.map(n=>`<option value="${esc(n)}" ${n===nd?'selected':''}>${n}</option>`).join('');
+  // Store context
+  sel.dataset.giai = giaiId;
+  openMo('mo-bracket');
+  renderBracket();
+}
+
+function renderBracket() {
+  const sel    = document.getElementById('bracket-nd-sel');
+  const giaiId = sel.dataset.giai || '';
+  const nd     = sel.value;
+  const wrap   = document.getElementById('bracket-wrap');
+  if (!nd) {
+    wrap.innerHTML = `<div class="empty"><div class="ei">🏆</div><p>Chọn nội dung thi đấu để xem bracket</p></div>`;
+    return;
+  }
+
+  // Lấy matches của nội dung này
+  const matches = _M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd);
+  if (!matches.length) {
+    wrap.innerHTML = `<div class="empty"><div class="ei">📋</div><p>Chưa có lịch thi đấu cho nội dung này</p></div>`;
+    return;
+  }
+
+  // Phân loại theo vòng đấu
+  const rounds = {};
+  matches.forEach(m => {
+    const r = String(m[9]||'Vòng bảng');
+    if (!rounds[r]) rounds[r] = [];
+    rounds[r].push(m);
+  });
+
+  // Thứ tự vòng đấu
+  const roundOrder = ['Vòng bảng','Vòng 1/8','Tứ kết','Bán kết','Tranh hạng 3','Chung kết'];
+  const allRounds  = [...new Set([...roundOrder, ...Object.keys(rounds)])].filter(r=>rounds[r]);
+
+  // Lấy BXH vòng bảng từ kết quả
+  const results = [];
+  _dK.forEach(k => {
+    const [g,b,c] = k.split('|');
+    if (g === giaiId) {
+      const m = matches.find(m=>String(m[0]||'')===g&&String(m[2]||'')===b&&String(m[3]||'')===c);
+      if (m) results.push({match:m, bangKey:`${g}|${b}`});
+    }
+  });
+
+  // Tính BXH theo bảng
+  const bangStandings = {};
+  const bangMatches   = matches.filter(m=>String(m[9]||'').includes('bảng')||String(m[9]||'')===''||String(m[9]||'Vòng bảng')==='Vòng bảng');
+  const bangs         = [...new Set(bangMatches.map(m=>String(m[2]||'')).filter(Boolean))];
+  bangs.forEach(bang => {
+    const table = {};
+    const bm    = bangMatches.filter(m=>String(m[2]||'')===bang);
+    bm.forEach(m => {
+      const tA=String(m[4]||''),tB=String(m[7]||'');
+      const sA=Number(m[5]||0),sB=Number(m[6]||0);
+      const k=`${m[0]}|${m[2]}|${m[3]}`;
+      if(!_dK.has(k)) return;
+      if(!table[tA]) table[tA]={team:tA,pts:0,won:0,pf:0,pa:0};
+      if(!table[tB]) table[tB]={team:tB,pts:0,won:0,pf:0,pa:0};
+      table[tA].pf+=sA; table[tA].pa+=sB;
+      table[tB].pf+=sB; table[tB].pa+=sA;
+      if(sA>sB){table[tA].pts+=2;table[tA].won++;}
+      else if(sB>sA){table[tB].pts+=2;table[tB].won++;}
+    });
+    bangStandings[bang] = Object.values(table).sort((a,b)=>b.pts-a.pts||(b.pf-b.pa)-(a.pf-a.pa));
+  });
+
+  // Render bracket HTML
+  let html = `<div style="font-size:11px;color:var(--tx3);margin-bottom:16px">${nd} · ${matches.length} trận · ${bangs.length} bảng</div>`;
+
+  // Vòng bảng: hiển thị dạng bảng + standings
+  if (rounds['Vòng bảng']) {
+    html += `<div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--bdr)">
+        📋 Vòng bảng
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+        ${bangs.map(bang => {
+          const bm  = (rounds['Vòng bảng']||[]).filter(m=>String(m[2]||'')===bang);
+          const st  = bangStandings[bang]||[];
+          return `<div style="background:var(--bg3);border-radius:10px;padding:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--ac2);margin-bottom:8px">${bang}</div>
+            ${st.length?`<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px">
+              <tr style="color:var(--tx3)"><th style="text-align:left;padding:2px 4px">#</th><th style="text-align:left;padding:2px 4px">Đội</th><th style="padding:2px 4px">Trận</th><th style="padding:2px 4px">Điểm</th></tr>
+              ${st.map((s,i)=>`<tr style="border-top:1px solid var(--bdr)">
+                <td style="padding:4px;font-weight:700;color:${i===0?'var(--or)':i===1?'var(--tx2)':'var(--tx3)'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+                <td style="padding:4px;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.team}">${s.team}</td>
+                <td style="padding:4px;text-align:center;color:var(--tx2)">${s.won}</td>
+                <td style="padding:4px;text-align:center;font-family:var(--mo);font-weight:700;color:var(--ac)">${s.pts}</td>
+              </tr>`).join('')}
+            </table>`:'<p style="font-size:11px;color:var(--tx3);margin-bottom:8px">Chưa có kết quả</p>'}
+            <div style="font-size:10px;color:var(--tx3)">${bm.length} trận</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Các vòng Knockout — dạng bracket cây
+  const koRounds = allRounds.filter(r=>r!=='Vòng bảng');
+  if (koRounds.length) {
+    html += `<div style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;color:var(--pu);margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid var(--bdr)">
+        🏆 Vòng loại trực tiếp
+      </div>
+      <div style="display:flex;gap:0;overflow-x:auto;padding-bottom:12px">`;
+
+    // Vẽ từng vòng thành cột
+    koRounds.forEach((roundName, ri) => {
+      const rMatches = rounds[roundName]||[];
+      const isLast   = ri===koRounds.length-1;
+      html += `<div style="min-width:200px;flex-shrink:0;padding:0 8px;position:relative">
+        <div style="font-size:11px;font-weight:700;color:${isLast?'var(--or)':'var(--ac)'};text-align:center;margin-bottom:12px;
+          padding:4px 8px;background:${isLast?'rgba(245,158,11,.1)':'rgba(14,165,233,.1)'};border-radius:6px">
+          ${roundName}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:${Math.max(10,40/rMatches.length)}px">
+          ${rMatches.map(m => {
+            const k    = `${m[0]}|${m[2]}|${m[3]}`;
+            const done = _dK.has(k);
+            const live = _lK.has(k);
+            const sA   = m[5]!==''&&m[5]!==undefined?m[5]:'—';
+            const sB   = m[6]!==''&&m[6]!==undefined?m[6]:'—';
+            const tA   = m[4]||'TBD';
+            const tB   = m[7]||'TBD';
+            const isWinA = done && Number(m[5]||0)>Number(m[6]||0);
+            const isWinB = done && Number(m[6]||0)>Number(m[5]||0);
+            return `<div style="background:var(--bg3);border:1px solid ${live?'var(--or)':done?'var(--gn)':'var(--bdr)'};
+              border-radius:8px;overflow:hidden;font-size:12px">
+              ${live?`<div style="background:rgba(245,158,11,.15);color:var(--or);font-size:10px;font-weight:700;padding:2px 8px;text-align:center">● LIVE</div>`:''}
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;
+                background:${isWinA?'rgba(34,197,94,.08)':'transparent'};
+                border-bottom:1px solid var(--bdr)">
+                <span style="font-weight:${isWinA?700:400};color:${isWinA?'var(--gn)':tA==='TBD'?'var(--tx3)':'var(--tx)'};
+                  max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${tA}">${tA}</span>
+                <span style="font-family:var(--mo);font-weight:700;color:${isWinA?'var(--gn)':'var(--ac)';margin-left:6px">${sA}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;
+                background:${isWinB?'rgba(34,197,94,.08)':'transparent'}">
+                <span style="font-weight:${isWinB?700:400};color:${isWinB?'var(--gn)':tB==='TBD'?'var(--tx3)':'var(--tx)'};
+                  max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${tB}">${tB}</span>
+                <span style="font-family:var(--mo);font-weight:700;color:${isWinB?'var(--gn)':'var(--or)'};margin-left:6px">${sB}</span>
+              </div>
+              <div style="padding:3px 8px;font-size:10px;color:var(--tx3);border-top:1px solid var(--bdr);display:flex;justify-content:space-between">
+                <span>${m[8]||'—'}</span><span class="mono" style="font-size:10px">${m[3]}</span>
+              </div>
+            </div>`;
+          }).join('')}
+          ${!rMatches.length?`<div style="background:var(--bg3);border:1px dashed var(--bdr);border-radius:8px;padding:20px;text-align:center;color:var(--tx3);font-size:12px">
+            Chưa có trận<br><button class="btn bp bsm" style="margin-top:8px" onclick="genKoRound('${esc(giaiId)}','${esc(nd)}','${esc(roundName)}')">⚡ Tạo trận</button>
+          </div>`:''}
+        </div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  }
+
+  // Nút tạo vòng knockout tự động
+  if (bangs.length && Object.values(bangStandings).some(s=>s.length)) {
+    html += `<div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:14px;margin-top:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--pu);margin-bottom:8px">⚡ Tạo vòng loại trực tiếp từ kết quả vòng bảng</div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:10px">
+        Hệ thống sẽ xếp đội theo thứ hạng (Nhất bảng A vs Nhì bảng B...) và tạo lịch knockout tự động.
+        Đội cùng bảng sẽ không gặp nhau cho đến Chung kết.
+      </div>
+      <button class="btn bp" onclick="genKnockout('${esc(giaiId)}','${esc(nd)}')">🏆 Tạo Tứ kết / Bán kết / Chung kết</button>
+    </div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+// ── Tạo knockout tự động từ BXH vòng bảng ──
+async function genKnockout(giaiId, nd) {
+  // Tính seeding: Nhất bảng A, Nhất bảng B, ... Nhì bảng A, Nhì bảng B,...
+  const bangMatches = _M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd&&
+    (String(m[9]||'').includes('bảng')||String(m[9]||'')===''));
+  const bangs       = [...new Set(bangMatches.map(m=>String(m[2]||'')).filter(Boolean))].sort();
+
+  // Tính BXH từng bảng
+  const seeds = []; // [{team, bang, rank}]
+  bangs.forEach(bang => {
+    const bm    = bangMatches.filter(m=>String(m[2]||'')===bang);
+    const table = {};
+    bm.forEach(m=>{
+      const tA=String(m[4]||''),tB=String(m[7]||'');
+      const k=`${m[0]}|${m[2]}|${m[3]}`;
+      if(!table[tA])table[tA]={team:tA,pts:0,pf:0,pa:0};
+      if(!table[tB])table[tB]={team:tB,pts:0,pf:0,pa:0};
+      if(!_dK.has(k))return;
+      const sA=Number(m[5]||0),sB=Number(m[6]||0);
+      table[tA].pf+=sA;table[tA].pa+=sB;
+      table[tB].pf+=sB;table[tB].pa+=sA;
+      if(sA>sB)table[tA].pts+=2;else if(sB>sA)table[tB].pts+=2;
+    });
+    const sorted = Object.values(table).sort((a,b)=>b.pts-a.pts||(b.pf-b.pa)-(a.pf-a.pa));
+    sorted.forEach((s,i)=>seeds.push({team:s.team,bang,rank:i+1}));
+  });
+
+  if (!seeds.length) { toast('Chưa có kết quả vòng bảng để xếp hạng','er'); return; }
+
+  // Seeding: Nhất bảng luân phiên — đảm bảo cùng bảng không gặp nhau sớm
+  const maxRank = Math.max(...seeds.map(s=>s.rank));
+  const seeded  = [];
+  for (let rank=1; rank<=maxRank; rank++) {
+    const thisRank = seeds.filter(s=>s.rank===rank);
+    // Xen kẽ bảng để tránh đụng nhau
+    seeded.push(...thisRank);
+  }
+
+  // Số đội tham gia knockout (lấy đủ 2^n)
+  const n     = seeded.length;
+  const koN   = [2,4,8,16].find(x=>x>=n) || 16;
+  // Pad TBD
+  while (seeded.length < koN) seeded.push({team:'TBD',bang:'—',rank:99});
+
+  // Xác định vòng đầu knockout
+  const koRoundName = koN===2?'Chung kết':koN===4?'Bán kết':koN===8?'Tứ kết':'Vòng 1/8';
+  const court = ((_curTourn?.[3]||'').split(',')[0]||'').trim() || '';
+  const rows  = [];
+  // Ghép cặp: 1 vs last, 2 vs (last-1)... tránh cùng bảng nếu có thể
+  const top = seeded.slice(0, koN/2);
+  const bot = seeded.slice(koN/2).reverse();
+  top.forEach((a,i)=>{
+    const b = bot[i]||{team:'TBD'};
+    rows.push([giaiId,nd,koRoundName,`KO${i+1}`,a.team,'','',b.team,court,koRoundName,'']);
+  });
+
+  if (!rows.length) { toast('Không thể tạo bracket','er'); return; }
+  if (!confirm(`Tạo ${rows.length} trận ${koRoundName}?\n${rows.map(r=>`${r[4]} vs ${r[7]}`).join('\n')}`)) return;
+
+  toast(`⏳ Đang tạo ${rows.length} trận ${koRoundName}...`,'in');
+  let added=0,skipped=0;
+  const chunks=[];
+  for(let i=0;i<rows.length;i+=5)chunks.push(rows.slice(i,i+5));
+  for(const ch of chunks) await Promise.all(ch.map(async row=>{
+    try{const d=await gPost({action:'addMatchAdmin',adminCode:CODE,row});d.ok?added++:skipped++;}
+    catch(e){skipped++;}
+  }));
+  toast(`✅ Tạo xong ${added} trận ${koRoundName}`,'ok');
+  await loadMatchesCache(giaiId);
+  renderBracket();
+}
+
+// ── openTournMo, saveTournament, editTourn, delTourn ──
+function openTournMo(pre=null) {
+  _editT = pre;
+  document.getElementById('tourn-tt').textContent = pre?'Sửa giải đấu':'Tạo giải đấu mới';
+  const genId = pre?.id||'';
+  document.getElementById('t-id').value          = genId;
+  document.getElementById('t-id-display').textContent = genId||'— (tự sinh khi nhập tên)';
+  document.getElementById('t-name').value        = pre?.name||'';
+  document.getElementById('t-venue').value       = pre?.venue||'';
+  document.getElementById('t-courts').value      = pre?.courts||'';
+  document.getElementById('t-noidung').value     = pre?.noidung||'';
+  document.getElementById('t-start').value       = pre?.start||'';
+  document.getElementById('t-end').value         = pre?.end||'';
+  document.getElementById('t-status').value      = pre?.status||'active';
+  document.getElementById('t-note').value        = pre?.note||'';
+  document.getElementById('t-save').disabled     = false;
+  openMo('mo-tourn');
+}
+function genTournId(name) {
+  if(!name) return '';
+  const yr    = new Date().getFullYear();
+  const words = name.trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/Đ/g,'D').replace(/đ/g,'d')
+    .split(/\s+/).filter(Boolean);
+  return words.map(w=>w[0]).join('').substring(0,6)+yr;
+}
+function onTournNameInput(val) {
+  if(_editT) return;
+  const gen = genTournId(val);
+  document.getElementById('t-id').value = gen;
+  document.getElementById('t-id-display').textContent = gen||'— (nhập tên để tạo mã)';
+}
+function editTourn(id) {
+  const r = _T.find(t=>String(t[0]||'')===id);
+  if(!r)return;
+  openTournMo({id:r[0],name:r[1],venue:r[2],courts:r[3],start:isoD(r[4]),end:isoD(r[5]),status:r[6],noidung:r[7],note:''});
 }
 async function saveTournament() {
-  const btn = document.getElementById('t-save');
-  const id   = document.getElementById('t-id').value.trim().toUpperCase();
+  const btn  = document.getElementById('t-save');
   const name = document.getElementById('t-name').value.trim();
-  if (!id || !name) { toast('Vui lòng nhập Mã giải và Tên giải', 'er'); return; }
-  btn.disabled = true;
-  const tourn = { id, name, venue: document.getElementById('t-venue').value.trim(),
-    courts: document.getElementById('t-courts').value.trim(),
-    startDate: document.getElementById('t-start').value, endDate: document.getElementById('t-end').value,
-    status: document.getElementById('t-status').value, note: document.getElementById('t-note').value.trim() };
+  if(!name){toast('Vui lòng nhập Tên giải','er');return;}
+  let id = document.getElementById('t-id').value.trim().toUpperCase();
+  if(!id) id = genTournId(name).toUpperCase();
+  if(!id){toast('Không thể tạo mã','er');return;}
+  document.getElementById('t-id').value = id;
+  btn.disabled=true;
+  const noidung = document.getElementById('t-noidung').value.trim();
+  const tourn   = {id,name,
+    venue:     document.getElementById('t-venue').value.trim(),
+    courts:    document.getElementById('t-courts').value.trim(),
+    startDate: document.getElementById('t-start').value,
+    endDate:   document.getElementById('t-end').value,
+    status:    document.getElementById('t-status').value,
+    note:      noidung
+  };
   closeMo('mo-tourn');
-  toast(`✅ ${_editT?'Cập nhật':'Tạo'} giải ${name}...`, 'ok');
-  try {
-    const d = await gPost({ action: _editT?'updateTournament':'addTournament', adminCode: CODE, tournament: tourn });
-    if (!d.ok) toast('Lỗi: ' + d.reason, 'er');
-    loadTournaments();
-  } catch(e) { toast('Lỗi kết nối', 'er'); }
+  toast(`✅ ${_editT?'Cập nhật':'Tạo'} giải ${name} (${id})...`,'ok');
+  try{
+    const d = await gPost({action:_editT?'updateTournament':'addTournament',adminCode:CODE,tournament:tourn});
+    if(!d.ok)toast('Lỗi: '+d.reason,'er');
+    else loadTournaments();
+  }catch(e){toast('Lỗi kết nối','er');}
 }
 async function delTourn(id, name) {
-  if (!confirm(`Xóa giải "${name}"? Dữ liệu trận đấu không bị xóa.`)) return;
-  toast(`🗑 Đang xóa giải ${name}...`, 'in');
-  try { await gPost({ action: 'deleteTournament', adminCode: CODE, id }); loadTournaments(); }
-  catch(e) { toast('Lỗi', 'er'); }
+  if(!confirm(`Xóa giải "${name}" (${id})?\nLịch thi đấu và kết quả KHÔNG bị xóa.`))return;
+  toast(`🗑 Đang xóa giải ${name}...`,'in');
+  try{await gPost({action:'deleteTournament',adminCode:CODE,id});loadTournaments();}
+  catch(e){toast('Lỗi','er');}
 }
+
 
 // ════════════════════════════════════════════════════════════════
 //  BXH – Bảng xếp hạng
