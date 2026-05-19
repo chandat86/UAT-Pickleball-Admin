@@ -1,5 +1,3 @@
-html
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -879,14 +877,17 @@ function doLogout() {
 //  PREFETCH — tải nền 1 lần, sau đó dùng cache
 // ════════════════════════════════════════════════════════════════
 async function prefetchAll() {
-  // Tải song song Tournaments + Dashboard
+  // Tải song song Tournaments + Matches để dropdown hoạt động ngay
   try {
-    const [tRes] = await Promise.all([
-      gGet({ action: 'tournaments' })
+    const giaiParam = ROLE === 'manager' ? MY_GIAI : '';
+    const [tRes, mRes] = await Promise.all([
+      gGet({ action: 'tournaments' }),
+      gGet({ action: 'matches', giai: giaiParam })
     ]);
     _T = tRes.rows?.slice(1) || [];
+    _M = mRes.rows?.slice(1) || [];
     populateTournamentDropdowns();
-  } catch(e) {}
+  } catch(e) { /* bỏ qua lỗi prefetch */ }
   loadDash();
 }
 
