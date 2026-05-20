@@ -702,7 +702,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <div class="sc b" onclick="showStatMo('total')" title="Click xem chi tiết">
           <div class="slb">Tổng trận <small>↗</small></div><div class="sv b" id="s-total">—</div><div class="ss">lịch đấu</div></div>
         <div class="sc o" onclick="showStatMo('live')" title="Click xem chi tiết">
-          <div class="slb">Đang live <small>↗</small></div><div class="sv o" id="s-live">—</div><div class="ss">trận live</div></div>
+          <div class="slb">Đang thi đấu <small>↗</small></div><div class="sv o" id="s-live">—</div><div class="ss">trận thi đấu</div></div>
         <div class="sc g" onclick="showStatMo('done')" title="Click xem chi tiết">
           <div class="slb">Hoàn thành <small>↗</small></div><div class="sv g" id="s-done">—</div><div class="ss">có kết quả</div></div>
         <div class="sc p" onclick="showStatMo('refs')" title="Click xem chi tiết">
@@ -712,7 +712,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       </div>
 
       <div class="dgrid">
-        <div class="card"><div class="ct">🔴 Đang live</div><div id="live-wrap"><div class="empty"><div class="ei">📡</div><p>Chưa có trận live</p></div></div></div>
+        <div class="card"><div class="ct">🔴 Đang thi đấu</div><div id="live-wrap"><div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div></div></div>
         <div class="card"><div class="ct">📈 Tiến độ theo nội dung</div><div id="cat-wrap"><div class="empty"><div class="ei">⏳</div><p>Đang tải...</p></div></div></div>
       </div>
       <div class="card"><div class="ct">🕐 Kết quả gần nhất</div><div id="rec-wrap"><div class="empty"><div class="ei">🏆</div><p>Chưa có</p></div></div></div>
@@ -864,7 +864,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <select class="fsel" id="m-st" onchange="filterMatches()">
           <option value="">Tất cả trạng thái</option>
           <option value="pending">⬜ Chưa đấu</option>
-          <option value="live">🟠 Đang live</option>
+          <option value="live">🟠 Đang thi đấu</option>
           <option value="done">✅ Hoàn thành</option>
         </select>
         <input class="si" id="m-q" placeholder="🔍 Tìm..." oninput="dbt(filterMatches)" style="flex:1;min-width:100px">
@@ -1636,7 +1636,7 @@ async function loadDash() {
     const lw = document.getElementById('live-wrap');
     const live = d.liveDetail || [];
     lw.innerHTML = !live.length
-      ? '<div class="empty"><div class="ei">📡</div><p>Chưa có trận live</p></div>'
+      ? '<div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div>'
       : `<table class="tbl"><thead><tr><th>Giải</th><th>Trận</th><th>Đội A</th><th>Tỉ số</th><th>Đội B</th><th>Game</th><th>Cập nhật</th></tr></thead><tbody>${
           live.map(r => {
             const [,bang,code] = (r.key||'').split('|');
@@ -1702,9 +1702,9 @@ function showStatMo(type) {
           <td><div class="prb" style="width:80px;display:inline-block"><div class="prf" style="width:${c.pct}%"></div></div> ${c.pct}%</td></tr>`).join('')
         }</tbody></table>`;
   } else if (type === 'live') {
-    title = `🟠 Đang live: ${s.liveMatches||0}`;
+    title = `🟠 Đang thi đấu: ${s.liveMatches||0}`;
     const live = _dashData.liveDetail || [];
-    html = !live.length ? '<div class="empty"><div class="ei">📡</div><p>Không có trận live</p></div>'
+    html = !live.length ? '<div class="empty"><div class="ei">📡</div><p>Không có trận đang thi đấu</p></div>'
       : `<table class="tbl"><thead><tr><th>Giải</th><th>Mã</th><th>Đội A</th><th>A</th><th>B</th><th>Đội B</th><th>Game</th><th>Cập nhật</th></tr></thead><tbody>${
         live.map(r => { const[,bang,code]=(r.key||'').split('|'); return `<tr>
           <td style="font-size:11px;color:var(--ac)">${r.giai}</td>
