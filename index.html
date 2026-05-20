@@ -692,110 +692,127 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 
     <!-- ══ DASHBOARD ══ -->
     <div class="page on" id="page-dashboard">
-      <div class="ph">
+
+      <!-- ── HEADER ── -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <div>
-          <div class="ptitle">📊 Dashboard <span class="rt-dot"></span></div>
-          <div class="psub" id="dash-filter-label">Tổng quan tất cả giải đấu · tự động cập nhật 30s</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px;font-weight:900;color:var(--tx)">📊 Dashboard</span>
+            <span class="rt-dot"></span>
+          </div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:2px" id="dash-filter-label">Tổng quan tất cả giải đấu · tự động cập nhật 30s</div>
         </div>
-        <button class="rfbtn" id="dash-rf" onclick="loadDash()">↻ Làm mới</button>
+        <button class="rfbtn" id="dash-rf" onclick="loadDash()" style="white-space:nowrap">↻ Làm mới</button>
       </div>
 
-      <!-- ── Filter phân cấp (luôn hiển thị) ── -->
-      <div class="fbar">
-        <label>🏆</label>
-        <select id="dash-giai" onchange="onDashGiaiChange()">
+      <!-- ── FILTER BAR ── -->
+      <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        <span style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;white-space:nowrap">🏆 Giải</span>
+        <select id="dash-giai" onchange="onDashGiaiChange()" style="min-width:170px;background:var(--bg3);border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--tx);font-weight:600">
           <option value="">Tất cả giải</option>
         </select>
-        <span class="farrow">›</span>
-        <select id="dash-nd" onchange="onDashNdChange()">
+        <span style="color:var(--tx3);font-size:14px">›</span>
+        <select id="dash-nd" onchange="onDashNdChange()" style="min-width:150px;background:var(--bg3);border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--tx)">
           <option value="">Tất cả nội dung</option>
         </select>
-        <span class="farrow">›</span>
-        <select id="dash-bang" onchange="loadDash()">
+        <span style="color:var(--tx3);font-size:14px">›</span>
+        <select id="dash-bang" onchange="loadDash()" style="min-width:120px;background:var(--bg3);border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--tx)">
           <option value="">Tất cả bảng</option>
         </select>
-        <button id="dash-clear-filter" onclick="clearDashFilter()" style="display:none" class="btn bh bsm">✕ Bỏ lọc</button>
+        <button id="dash-clear-filter" onclick="clearDashFilter()" style="display:none;margin-left:4px" class="btn bh bsm">✕ Bỏ lọc</button>
       </div>
 
-      <!-- ── Stat cards ── -->
-      <div class="stats" style="grid-template-columns:repeat(5,1fr)">
-        <div class="sc b" onclick="showStatMo('total')" title="Click xem chi tiết">
+      <!-- ── STAT CARDS ── -->
+      <div class="stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px">
+        <div class="sc b" onclick="showStatMo('total')" title="Click xem chi tiết" style="cursor:pointer">
           <div class="slb">Tổng trận <small>↗</small></div>
-          <div class="sv b" id="s-total">—</div>
-          <div class="ss">lịch đấu</div>
-        </div>
-        <div class="sc o" onclick="showStatMo('live')" title="Click xem chi tiết">
+          <div class="sv b" id="s-total">—</div><div class="ss">lịch đấu</div></div>
+        <div class="sc o" onclick="showStatMo('live')" title="Click xem chi tiết" style="cursor:pointer">
           <div class="slb">Đang thi đấu <small>↗</small></div>
-          <div class="sv o" id="s-live">—</div>
-          <div class="ss">trận live</div>
-        </div>
-        <div class="sc g" onclick="showStatMo('done')" title="Click xem chi tiết">
+          <div class="sv o" id="s-live">—</div><div class="ss">trận live</div></div>
+        <div class="sc g" onclick="showStatMo('done')" title="Click xem chi tiết" style="cursor:pointer">
           <div class="slb">Hoàn thành <small>↗</small></div>
-          <div class="sv g" id="s-done">—</div>
-          <div class="ss">có kết quả</div>
-        </div>
-        <div class="sc p" onclick="showStatMo('refs')" title="Click xem chi tiết">
+          <div class="sv g" id="s-done">—</div><div class="ss">có kết quả</div></div>
+        <div class="sc p" onclick="showStatMo('refs')" title="Click xem chi tiết" style="cursor:pointer">
           <div class="slb">Trọng tài <small>↗</small></div>
           <div class="sv p" id="s-refs">—</div>
-          <div class="ss">hôm nay: <span id="s-logins" style="color:var(--gn);font-weight:900">0</span></div>
-        </div>
-        <div class="sc c" onclick="nav('standings')" title="Xem bảng xếp hạng">
+          <div class="ss">hôm nay: <span id="s-logins" style="color:var(--gn);font-weight:900">0</span></div></div>
+        <div class="sc c" onclick="nav('standings')" title="Xem bảng xếp hạng" style="cursor:pointer">
           <div class="slb">Nội dung <small>↗</small></div>
-          <div class="sv c" id="s-nd">—</div>
-          <div class="ss">danh mục</div>
-        </div>
+          <div class="sv c" id="s-nd">—</div><div class="ss">danh mục</div></div>
       </div>
 
-      <!-- ── Khu vực nội dung chính: thay đổi theo filter ── -->
-
-      <!-- A. Tất cả giải: Live + Tiến độ -->
+      <!-- ══ VIEW ALL (chưa chọn giải) ══ -->
       <div id="dash-view-all">
-        <div class="dgrid">
+        <div class="dgrid" style="margin-bottom:14px">
           <div class="card">
-            <div class="ct" style="display:flex;justify-content:space-between;align-items:center">
-              <span>🔴 Đang thi đấu</span>
-              <span id="dash-live-count" style="font-size:11px;color:var(--or)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--rd);display:inline-block;animation:pulse 1.2s infinite"></span>
+                <span style="font-weight:700;font-size:13px">Đang thi đấu</span>
+                <span id="dash-live-count" style="font-size:11px;color:var(--or);font-weight:600"></span>
+              </div>
             </div>
             <div id="live-wrap"><div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div></div>
           </div>
           <div class="card">
-            <div class="ct">📈 Tiến độ theo nội dung</div>
+            <div style="font-weight:700;font-size:13px;margin-bottom:12px">📈 Tiến độ theo nội dung</div>
             <div id="cat-wrap"><div class="empty"><div class="ei">⏳</div><p>Đang tải...</p></div></div>
           </div>
         </div>
         <div class="card">
-          <div class="ct" style="display:flex;justify-content:space-between;align-items:center">
-            <span>🕐 Kết quả gần nhất</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-weight:700;font-size:13px">🕐 Kết quả gần nhất</span>
             <button class="btn bh bsm" onclick="nav('results')">Xem tất cả ↗</button>
           </div>
           <div id="rec-wrap"><div class="empty"><div class="ei">🏆</div><p>Chưa có</p></div></div>
         </div>
       </div>
 
-      <!-- B. Đã chọn giải/ND/Bảng: Bảng trận chi tiết -->
+      <!-- ══ VIEW FILTER (đã chọn giải/ND/Bảng) ══ -->
       <div id="dash-view-filter" style="display:none">
-        <!-- Live row (hiện khi có trận đang đánh trong filter) -->
-        <div class="card" id="dash-live-card" style="display:none;margin-bottom:0">
-          <div class="ct">🔴 Đang thi đấu <span id="dash-live-badge" style="font-size:11px;color:var(--or);font-weight:600"></span></div>
+
+        <!-- Live mini-banner -->
+        <div id="dash-live-card" style="display:none;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--or);display:inline-block;animation:pulse 1s infinite"></span>
+            <span style="font-weight:700;font-size:13px;color:var(--or)">Đang thi đấu</span>
+            <span id="dash-live-badge" style="font-size:11px;color:var(--or);background:rgba(245,158,11,.15);padding:2px 8px;border-radius:20px;font-weight:600"></span>
+          </div>
           <div id="dash-live-wrap2"></div>
         </div>
 
-        <!-- Bảng trận đấu tổng hợp -->
-        <div class="card" id="dash-matches-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-            <div class="ct" id="dash-matches-title" style="margin:0">📋 Danh sách trận</div>
-            <div style="display:flex;gap:6px;align-items:center">
-              <span id="dash-match-summary" style="font-size:11px;color:var(--tx3)"></span>
-              <button class="btn bh bsm" onclick="loadDash()">↻ Làm mới</button>
-            </div>
+        <!-- Progress bar tổng quan -->
+        <div id="dash-progress-bar" style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+            <span style="font-weight:700;font-size:13px" id="dash-prog-title">Tiến độ giải đấu</span>
+            <span id="dash-match-summary" style="font-size:12px;color:var(--tx3)"></span>
           </div>
+          <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:8px">
+            <div id="dash-prog-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--ac),var(--gn));border-radius:4px;transition:width .6s ease"></div>
+          </div>
+          <div style="display:flex;gap:16px;font-size:11px;color:var(--tx3)">
+            <span>✅ <span id="dash-prog-done" style="color:var(--gn);font-weight:700">0</span> hoàn thành</span>
+            <span>⚡ <span id="dash-prog-live" style="color:var(--or);font-weight:700">0</span> đang đấu</span>
+            <span>⬜ <span id="dash-prog-pend" style="color:var(--tx3);font-weight:700">0</span> chưa đấu</span>
+          </div>
+        </div>
+
+        <!-- Bảng đấu — group by bảng, có tab ND nếu chưa chọn ND -->
+        <div class="card" id="dash-matches-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+            <span style="font-weight:700;font-size:14px" id="dash-matches-title">📋 Danh sách trận</span>
+            <button class="rfbtn" onclick="loadDash()" style="font-size:11px;padding:5px 10px">↻</button>
+          </div>
+          <!-- Tab nội dung (ẩn khi đã chọn ND cụ thể) -->
+          <div id="dash-nd-tabs" style="display:none;margin-bottom:14px;border-bottom:1px solid var(--bdr);padding-bottom:0"></div>
           <div id="dash-matches-wrap"><div class="empty"><span class="spin"></span></div></div>
         </div>
 
-        <!-- Kết quả filter -->
-        <div class="card">
-          <div class="ct" style="display:flex;justify-content:space-between;align-items:center">
-            <span>🏆 Kết quả <span id="dash-rec-badge" style="font-size:11px;color:var(--gn);font-weight:600"></span></span>
+        <!-- Kết quả -->
+        <div class="card" style="margin-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-weight:700;font-size:13px">🏆 Kết quả <span id="dash-rec-badge" style="font-size:11px;color:var(--gn);font-weight:600;margin-left:4px"></span></span>
             <button class="btn bh bsm" onclick="nav('results')">Xem đầy đủ ↗</button>
           </div>
           <div id="rec-wrap2"><div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả</p></div></div>
@@ -1944,9 +1961,13 @@ function populateTournamentDropdowns() {
 // → resolve sang giaiName (vì _M[r[0]] = giaiName)
 function _resolveGiaiName(giai) {
   if (!giai) return '';
+  // Thử khớp theo mã giải (giaiId → giaiName)
   const byId = _T.find(t => String(t[0]||'') === giai);
   if (byId) return String(byId[1]||giai);
-  return giai; // Đã là tên rồi
+  // Thử khớp theo tên giải (giaiName → giaiName, không thay đổi)
+  const byName = _T.find(t => String(t[1]||'') === giai);
+  if (byName) return String(byName[1]||giai);
+  return giai; // fallback
 }
 function getNoidungs(giai) {
   const g = _resolveGiaiName(giai);
@@ -2095,16 +2116,14 @@ async function loadDash() {
       // Nếu _M chưa có → kích load nền để dropdown ND/Bảng sẵn sàng
       if (_M.length === 0) prefetchAll();
     } else {
-      // VIEW FILTER: bảng trận + kết quả
+      // VIEW FILTER: bảng trận chi tiết theo giải/ND/Bảng
       document.getElementById('dash-view-all').style.display    = 'none';
       document.getElementById('dash-view-filter').style.display = '';
 
       // ── Đảm bảo _M có dữ liệu của giải đang chọn ──
-      // (loadDash có thể chạy trước prefetch hoàn tất)
       const giaiForM = _resolveGiaiName(filterGiaiId);
       const hasMatchData = !giaiForM || _M.some(m => String(m[0]||'') === giaiForM);
       if (!hasMatchData) {
-        // Hiện loading, load _M, rồi render lại
         const mWrapLoading = document.getElementById('dash-matches-wrap');
         if(mWrapLoading) mWrapLoading.innerHTML = '<div class="empty" style="padding:32px"><span class="spin"></span><p style="margin-top:8px;color:var(--tx3)">Đang tải trận đấu...</p></div>';
         const cKey2 = 'matches_' + giaiForM;
@@ -2123,67 +2142,107 @@ async function loadDash() {
             }
           } catch(eM) { console.warn('[loadDash] fetch matches:', eM.message); }
         }
-        // Cập nhật ND/Bảng dropdown sau khi có _M
         _dashPopulateFilters(d, filterGiaiId, filterNd, filterBang);
       }
 
-      // Title — dùng giaiName để match với _M
       const giaiN2 = giaiForM || _resolveGiaiName(filterGiaiId);
-      const label  = [giaiN2, filterNd, filterBang].filter(Boolean).join(' › ');
+      const parts  = [giaiN2, filterNd, filterBang].filter(Boolean);
+      const label  = parts.join(' › ');
+
+      // Update header label
       const mTitle = document.getElementById('dash-matches-title');
-      if (mTitle) mTitle.textContent = `📋 Trận đấu${label?' — '+label:''}`;
+      if(mTitle) mTitle.textContent = `📋 ${label || 'Tất cả trận'}`;
       const flLbl = document.getElementById('dash-filter-label');
       if(flLbl) flLbl.textContent = label ? `Đang xem: ${label}` : 'Tổng quan tất cả giải đấu · tự động cập nhật 30s';
-      // Lấy matches từ _M (so theo giaiName vì _M lưu tên)
+
+      // Lọc _M theo filter
       const filteredM = _M.filter(m => {
         if (giaiN2     && String(m[0]||'') !== giaiN2)     return false;
         if (filterNd   && String(m[1]||'') !== filterNd)   return false;
         if (filterBang && String(m[2]||'') !== filterBang) return false;
         return true;
-      }).sort((a,b) => String(a[1]||'').localeCompare(String(b[1]||''), undefined, {numeric:true})
-             || String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true})
-             || String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true}));
-      const doneM = filteredM.filter(m=>isMatchDone(m)).length;
-      const liveM = filteredM.filter(m=>!isMatchDone(m)&&_lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
+      }).sort((a,b) =>
+        String(a[1]||'').localeCompare(String(b[1]||''), undefined, {numeric:true}) ||
+        String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true}) ||
+        String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true})
+      );
+
+      const doneM = filteredM.filter(m => isMatchDone(m)).length;
+      const liveM = filteredM.filter(m => !isMatchDone(m) && _lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
       const pendM = filteredM.length - doneM - liveM;
-      document.getElementById('dash-match-summary').textContent =
-        `${filteredM.length} trận · ✅${doneM} · ⚡${liveM} · ⬜${pendM}`;
-      // Live trong filter
-      const liveInFilter = filteredM.filter(m=>{
-        if (isMatchDone(m)) return false;
-        return _lK.has(`${m[1]}|${m[2]}|${m[3]}`);
-      });
+
+      // ── Progress bar ──
+      const progBar  = document.getElementById('dash-progress-bar');
+      const progFill = document.getElementById('dash-prog-fill');
+      if (progBar && filteredM.length) {
+        progBar.style.display = '';
+        const pct = Math.round(doneM / filteredM.length * 100);
+        if(progFill) progFill.style.width = pct + '%';
+        document.getElementById('dash-prog-done').textContent = doneM;
+        document.getElementById('dash-prog-live').textContent = liveM;
+        document.getElementById('dash-prog-pend').textContent = pendM;
+        document.getElementById('dash-prog-title').textContent =
+          `Tiến độ${label?' — '+label:''} · ${pct}%`;
+        document.getElementById('dash-match-summary').textContent =
+          `${filteredM.length} trận · ✅${doneM} · ⚡${liveM} · ⬜${pendM}`;
+      } else if(progBar) { progBar.style.display = 'none'; }
+
+      // ── Live trong filter ──
       const liveCard2 = document.getElementById('dash-live-card');
       const liveWrap2 = document.getElementById('dash-live-wrap2');
-      if (liveInFilter.length) {
+      const liveInFilter = filteredM.filter(m => !isMatchDone(m) && _lK.has(`${m[1]}|${m[2]}|${m[3]}`));
+      if (liveInFilter.length && liveCard2) {
         liveCard2.style.display = '';
-        document.getElementById('dash-live-badge').textContent = `${liveInFilter.length} trận`;
+        document.getElementById('dash-live-badge').textContent = liveInFilter.length + ' trận';
         liveWrap2.innerHTML = _renderLiveTable(liveInFilter);
-      } else {
-        liveCard2.style.display = 'none';
+      } else if(liveCard2) { liveCard2.style.display = 'none'; }
+
+      // ── ND tabs (khi chưa chọn ND cụ thể) ──
+      const ndTabsEl = document.getElementById('dash-nd-tabs');
+      if (ndTabsEl) {
+        if (!filterNd && filteredM.length) {
+          const ndsInFilter = [...new Set(filteredM.map(m=>String(m[1]||'')).filter(Boolean))].sort();
+          if (ndsInFilter.length > 1) {
+            ndTabsEl.style.display = '';
+            ndTabsEl.innerHTML = ndsInFilter.map(nd => {
+              const cnt = filteredM.filter(m=>String(m[1]||'')===nd).length;
+              const dnC = filteredM.filter(m=>String(m[1]||'')===nd && isMatchDone(m)).length;
+              const pct2 = Math.round(dnC/cnt*100);
+              return `<div style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;margin-right:4px;margin-bottom:-1px;border:1px solid var(--bdr);border-bottom:none;border-radius:8px 8px 0 0;background:var(--bg3);cursor:pointer;font-size:12px;font-weight:600"
+                onclick="document.getElementById('dash-nd').value='${escAttr(nd)}';onDashNdChange()">
+                <span style="color:var(--ac2)">${esc(nd)}</span>
+                <span style="font-size:10px;color:var(--tx3)">${cnt}T</span>
+                <span style="font-size:10px;${pct2===100?'color:var(--gn)':pct2>0?'color:var(--or)':'color:var(--tx3)'}">${pct2}%</span>
+              </div>`;
+            }).join('');
+          } else { ndTabsEl.style.display = 'none'; }
+        } else { ndTabsEl.style.display = 'none'; }
       }
-      // Bảng trận đầy đủ
+
+      // ── Render bảng trận ──
       const mWrap = document.getElementById('dash-matches-wrap');
-      mWrap.innerHTML = !filteredM.length
-        ? '<div class="empty"><div class="ei">📋</div><p>Không có trận nào trong bộ lọc này</p></div>'
-        : _renderMatchTable(filteredM);
-      // Kết quả trong filter (từ _dkScores)
+      if (mWrap) {
+        mWrap.innerHTML = !filteredM.length
+          ? '<div class="empty"><div class="ei">📋</div><p>Không có trận nào trong bộ lọc này</p><button class="btn bh bsm" onclick="clearDashFilter()" style="margin-top:10px">Xem tất cả</button></div>'
+          : _renderMatchTable(filteredM);
+      }
+
+      // ── Kết quả trong filter ──
       const recInFilter = filteredM
         .filter(m => isMatchDone(m))
         .map(m => {
           const fs = getFinalScore(m);
           return { code:m[3], nd:m[1], bang:m[2], giai:m[0],
-                   teamA:fs?.teamA||m[4]||'', teamB:fs?.teamB||m[7]||'',
-                   scoreA:fs?.scoreA??'—', scoreB:fs?.scoreB??'—', winner:fs?.winner||'' };
+            teamA:fs?.teamA||m[4]||'', teamB:fs?.teamB||m[7]||'',
+            scoreA:fs?.scoreA??'—', scoreB:fs?.scoreB??'—', winner:fs?.winner||'' };
         }).reverse();
       const rw2 = document.getElementById('rec-wrap2');
       const rcBadge = document.getElementById('dash-rec-badge');
       if(rcBadge) rcBadge.textContent = recInFilter.length ? `(${recInFilter.length})` : '';
-      rw2.innerHTML = !recInFilter.length
+      if(rw2) rw2.innerHTML = !recInFilter.length
         ? '<div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả trong bộ lọc này</p></div>'
         : _renderRecentFromLocal(recInFilter);
-    }
-
+    } // end else (filter view)
   } catch(e) {
     console.error('[loadDash] Error:', e.message, e.stack||'');
     // Phân biệt lỗi kết nối vs lỗi JS
@@ -3540,14 +3599,10 @@ function buildGiaiNameMap() {
 }
 // Normalize một mảng rows: đổi m[0] từ tên → mã nếu tìm thấy
 function normalizeMatchRows(rows) {
-  const nameMap = buildGiaiNameMap();
-  return rows.map(r => {
-    const key = String(r[0]||'');
-    if (nameMap[key]) {
-      const nr = [...r]; nr[0] = nameMap[key]; return nr;
-    }
-    return r;
-  });
+  // GHI CHÚ QUAN TRỌNG: KHÔNG đổi m[0] sang giaiId
+  // _M luôn lưu giaiName (tên giải) vì GSheets lưu tên
+  // filter và compare đều phải dùng _resolveGiaiName(giaiId) → giaiName
+  return rows.map(r => [...r]); // chỉ clone, không thay đổi
 }
 
 async function loadMatchesCache(giaiId='') {
