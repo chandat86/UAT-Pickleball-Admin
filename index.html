@@ -1334,6 +1334,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 let GS='', CODE='', NAME='', ROLE='', MY_GIAI=''; // thông tin đăng nhập
 let _T=[],_U=[],_M=[],_R=[],_P=[];                // dữ liệu cache
 let _dK=new Set(), _lK=new Set();                  // done keys, live keys
+let _liveScores={};                                // key→{scoreA,scoreB,teamA,teamB,game} live scores
+let _liveTimer=null;                               // auto-refresh live every 8s
 let _dashData=null;                                // cache dashboard
 let _editU=null,_editM=null,_editP=null,_editT=null; // đang sửa gì
 let _rrRows=[], _csvM=[], _csvP=[];                // batch data
@@ -1427,13 +1429,45 @@ function showApp() {
 
   // Tải dữ liệu nền một lần để cache
   prefetchAll();
-  // Bắt đầu realtime refresh 30s
+  // Bắt đầu realtime refresh 30s dashboard + 8s live scores
   _dtimer = setInterval(() => { if(_curPage==='dashboard') loadDash(); }, 30000);
+  startLivePolling();
+}
+
+// ── Live polling: cập nhật _lK + _liveScores mỗi 8 giây ──
+function startLivePolling() {
+  if (_liveTimer) return;
+  _liveTimer = setInterval(async () => {
+    try {
+      const giaiId   = _curTourn ? String(_curTourn[0]||'') : '';
+      const giaiName = _curTourn ? String(_curTourn[1]||'') : '';
+      const giai     = giaiName || giaiId;
+      if (!giai || !GS) return;
+      const ld = await gGet({action:'live', code:'all', giai});
+      const rows = ld.rows?.slice(1) || [];
+      _lK = new Set(rows.map(r=>String(r[0]||'')));
+      // Build live scores map: key → {scoreA, scoreB, teamA, teamB, game}
+      const newScores = {};
+      rows.forEach(r => {
+        const key = String(r[0]||'');
+        if (key) newScores[key] = {
+          teamA: String(r[2]||''), scoreA: r[3]!==''?Number(r[3]):null,
+          scoreB: r[4]!==''?Number(r[4]):null, teamB: String(r[5]||''),
+          game: String(r[7]||''), updatedAt: String(r[8]||'')
+        };
+      });
+      _liveScores = newScores;
+      // Re-render chỉ khi đang xem bảng đấu
+      if (_curPage === 'tournaments' && _curNd && _curTourn) {
+        renderBangList(giaiId, _curNd);
+      }
+    } catch(e) {}
+  }, 8000);
 }
 
 function doLogout() {
   localStorage.removeItem('pb_adm3');
-  clearInterval(_dtimer); clearInterval(_rtimer);
+  clearInterval(_dtimer); clearInterval(_rtimer); clearInterval(_liveTimer);
   location.reload();
 }
 
@@ -1877,7 +1911,7 @@ function renderBangList(giaiId, nd) {
     matches.sort((a,b) => String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true, sensitivity:'base'}));
     const teams   = [...new Set(matches.flatMap(m=>[m[4],m[7]]).filter(Boolean))];
     const doneC   = matches.filter(m=>{const k=`${m[0]}|${m[2]}|${m[3]}`;return _dK.has(k);}).length;
-    const liveC   = matches.filter(m=>{const k=`${m[0]}|${m[2]}|${m[3]}`;return _lK.has(k);}).length;
+    const liveC   = matches.filter(m=>{const lk=`${m[1]}|${m[2]}|${m[3]}`;return _lK.has(lk);}).length;
     return `<div class="card" style="margin-bottom:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div>
@@ -1907,7 +1941,8 @@ function renderBangList(giaiId, nd) {
           <tbody>
             ${matches.length ? matches.map(m => {
               const k   = `${m[0]}|${m[2]}|${m[3]}`;
-              const done = _dK.has(k), live = _lK.has(k);
+              const lk  = `${m[1]}|${m[2]}|${m[3]}`;
+              const done = _dK.has(k), live = _lK.has(lk);
               const sb  = done?'<span class="bdg bo" style="font-size:10px">✅</span>':live?'<span class="bdg bw" style="font-size:10px">🟠</span>':'<span class="bdg bg0" style="font-size:10px">⬜</span>';
               // Trọng tài được phân công sân này trong giải này
               const matchCourt = String(m[8]||'').trim().toLowerCase();
@@ -1920,15 +1955,22 @@ function renderBangList(giaiId, nd) {
                 return uCourts.includes(matchCourt);
               }).map(u=>String(u[1]||u[0]||'')).filter(Boolean);
               const refCell = assignedRefs.length ? assignedRefs.map(n=>`<span style="font-size:10px;background:rgba(99,179,237,.15);color:var(--ac2);border-radius:4px;padding:1px 5px;white-space:nowrap">${n}</span>`).join(' ') : '<span style="color:var(--tx3);font-size:11px">—</span>';
-              return `<tr>
+              // Tỉ số: ưu tiên live realtime, fallback sang điểm cuối trận
+              const ls = live ? _liveScores[lk] : null;
+              const sA = ls ? ls.scoreA : (m[5]!==''&&m[5]!==undefined ? m[5] : null);
+              const sB = ls ? ls.scoreB : (m[6]!==''&&m[6]!==undefined ? m[6] : null);
+              const sAcell = sA!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${live?'var(--or)':'var(--ac)'};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
+              const sBcell = sB!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${live?'var(--or)':'var(--ac)'};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
+              const gameTag = ls ? `<span style="font-size:9px;color:var(--or);opacity:.8;display:block;text-align:center">${ls.game||''}</span>` : '';
+              return `<tr${live?' style="background:rgba(245,158,11,.06);border-left:2px solid var(--or)"':''}>
                 <td style="font-family:var(--mo);color:var(--ac);font-weight:700;white-space:nowrap">${m[3]||''}</td>
-                <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
-                <td style="text-align:center;font-family:var(--mo);color:var(--ac);font-weight:700">${m[5]!==''&&m[5]!==undefined?m[5]:'—'}</td>
-                <td style="text-align:center;font-family:var(--mo);color:var(--or);font-weight:700">${m[6]!==''&&m[6]!==undefined?m[6]:'—'}</td>
+                <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${live?';color:var(--tx)':''}">${m[4]||'TBD'}</td>
+                <td style="text-align:center">${sAcell}${gameTag}</td>
+                <td style="text-align:center">${sBcell}</td>
                 <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
                 <td style="color:var(--ac2);font-size:11px">${m[8]||'—'}</td>
                 <td>${refCell}</td>
-                <td style="white-space:nowrap">${done?'<span class="bdg bo" style="font-size:10px">✅ Hoàn thành</span>':live?'<span class="bdg bw" style="font-size:10px">⚡ Đang đấu</span>':'<span style="font-size:10px;color:var(--tx3)">⬜ Chưa đấu</span>'}</td>
+                <td style="white-space:nowrap">${done?'<span class="bdg bo" style="font-size:10px">✅ Hoàn thành</span>':live?'<span class="bdg bw" style="font-size:10px;animation:pulse 1s infinite">⚡ Đang đấu</span>':'<span style="font-size:10px;color:var(--tx3)">⬜ Chưa đấu</span>'}</td>
                 <td><button class="btn bsm" style="padding:3px 8px;font-size:11px;background:rgba(99,179,237,.15);color:var(--ac2);border:1px solid rgba(99,179,237,.3)" onclick="openEditMatchMo('${esc(giaiId)}','${esc(nd)}','${esc(bang)}','${esc(String(m[3]||''))}')">✏️</button></td>
               </tr>`;
             }).join('') : `<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--tx3)">Chưa có trận</td></tr>`}
@@ -2220,18 +2262,29 @@ async function applyEditBang(giaiId, nd, oldBang) {
 
 // ── Xóa toàn bộ trận của một bảng ──
 async function confirmDeleteBang(giaiId, nd, bang) {
-  const matches = _M.filter(m => String(m[0]||'')===giaiId && String(m[1]||'')===nd && String(m[2]||'')===bang);
+  const giaiName = String((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||'');
+  const matchGiai = m => { const v=String(m[0]||''); return v===giaiId||(giaiName&&v===giaiName); };
+  const matches = _M.filter(m => matchGiai(m) && String(m[1]||'')===nd && String(m[2]||'')===bang);
   if (!matches.length) { toast('Bảng không có trận nào','er'); return; }
   if (!confirm('Xóa toàn bộ ' + matches.length + ' trận của "' + bang + '"?\nHành động này không thể hoàn tác.')) return;
-  toast('⏳ Đang xóa bảng ' + bang + '...', 'in');
+  showProg('Đang xóa bảng ' + bang + '...', 'Chuẩn bị...', matches.length);
   let deleted = 0, failed = 0;
-  for (const m of matches) {
+  for (let i=0; i<matches.length; i++) {
+    const m = matches[i];
+    const rowGiai = String(m[0]||''); // giá trị thực trong GSheets (có thể là tên)
     try {
-      const d = await gPost({ action:'deleteMatch', adminCode:CODE, giai:giaiId, bang:String(m[2]||''), code:String(m[3]||'') });
+      const d = await gPost({
+        action:'deleteMatch', adminCode:CODE,
+        giai: rowGiai,           // giá trị thực trong sheet
+        giaiName: giaiName,      // backup lookup
+        bang: String(m[2]||''),
+        code: String(m[3]||'')
+      });
       d.ok ? deleted++ : failed++;
     } catch(e) { failed++; }
+    updateProg(i+1, matches.length, deleted, 0, failed);
   }
-  toast('✅ Đã xóa ' + deleted + ' trận' + (failed ? ' (' + failed + ' lỗi)' : ''), deleted ? 'ok' : 'er');
+  doneProg(deleted, 0, failed);
   await loadMatchesCache(giaiId);
   renderBangList(giaiId, nd);
 }
@@ -3425,9 +3478,10 @@ function filterMatches() {
     if (bang && String(r[2]||'') !== bang)  return false;
     if (st) {
       const k = `${r[0]}|${r[2]}|${r[3]}`;
-      if (st==='done'    && !_dK.has(k)) return false;
-      if (st==='live'    && !_lK.has(k)) return false;
-      if (st==='pending' && (_dK.has(k)||_lK.has(k))) return false;
+      const lk = `${r[1]}|${r[2]}|${r[3]}`;
+      if (st==='done'    && !_dK.has(k))  return false;
+      if (st==='live'    && !_lK.has(lk)) return false;
+      if (st==='pending' && (_dK.has(k)||_lK.has(lk))) return false;
     }
     if (q) return [r[0],r[1],r[2],r[3],r[4],r[7],r[8]].some(v=>String(v||'').toLowerCase().includes(q));
     return true;
@@ -3439,7 +3493,8 @@ function renderMatches(rows) {
   if (!rows.length) { tb.innerHTML = emptyRow(11,'📋','Không có trận nào'); return; }
   tb.innerHTML = rows.map(r => {
     const k    = `${r[0]}|${r[2]}|${r[3]}`;
-    const done = _dK.has(k), live = _lK.has(k);
+    const lk   = `${r[1]}|${r[2]}|${r[3]}`;
+    const done = _dK.has(k), live = _lK.has(lk);
     const sb   = done ? '<span class="bdg bo">✅ Xong</span>' : live ? '<span class="bdg bw">🟠 Live</span>' : '<span class="bdg bg0">⬜ Chưa</span>';
     const sA   = r[5]!==''&&r[5]!==undefined ? r[5] : '—';
     const sB   = r[6]!==''&&r[6]!==undefined ? r[6] : '—';
