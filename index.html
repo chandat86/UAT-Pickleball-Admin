@@ -2649,20 +2649,25 @@ async function saveEditMatch(giaiId, nd, bang, code) {
 
   // Build newRow — giữ nguyên tất cả, chỉ đổi đội A, đội B, sân, ghi chú
   const newRow = [...m];
+  // ⚡ QUAN TRỌNG: row[0] luôn phải là TÊN giải (GSheets lưu tên, không phải mã)
+  newRow[0]  = gName || giaiId;
   newRow[4]  = ta;
   newRow[7]  = tb;
   if (court) newRow[8] = court;
   newRow[10] = note;
 
-  // Cập nhật lên GSheets — dùng updateMatch (không tạo mới)
-  // Thử tìm bằng giaiName trước (vì GSheets lưu tên), fallback sang giaiId
-  const tryUpdate = async (g) => {
-    return gPost({action:'updateMatch', adminCode:CODE, giai:g, bang, code, row:newRow});
-  };
   toast('⏳ Đang cập nhật...','in');
-  let d = await tryUpdate(gName || giaiId);
+  // Gửi giaiName để GAS tìm đúng row và ghi đúng tên
+  let d = await gPost({
+    action:'updateMatch', adminCode:CODE,
+    giai: gName || giaiId,   // dùng để tìm row
+    giaiName: gName || giaiId, // backup lookup
+    bang, code, row: newRow
+  });
+  // Fallback nếu GSheets lưu mã thay vì tên
   if (d && !d.ok && gName && gName !== giaiId) {
-    d = await tryUpdate(giaiId); // fallback
+    d = await gPost({action:'updateMatch', adminCode:CODE,
+      giai: giaiId, giaiName: gName, bang, code, row: newRow});
   }
   if (d && d.ok) {
     toast('✅ Đã cập nhật trận '+code,'ok');
