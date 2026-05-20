@@ -1971,9 +1971,35 @@ async function loadDash() {
   const nd   = document.getElementById('dash-nd')?.value   || '';
   const bang = document.getElementById('dash-bang')?.value || '';
   try {
-    const d = await gGet({ action: 'dashboard', adminCode: CODE, giai: giaiName, nd, bang });
+    // Tải song song: dashboard summary + matches của giải được chọn
+    const cKeyM = 'matches_' + (giaiName || '');
+    const cachedM = cacheGet(cKeyM);
+    const matchPromise = (!cachedM && giaiName)
+      ? gGet({ action:'matches', giai: giaiName }).catch(() => ({}))
+      : Promise.resolve(null);
+
+    const [d, mRes] = await Promise.all([
+      gGet({ action: 'dashboard', adminCode: CODE, giai: giaiName, nd, bang }),
+      matchPromise
+    ]);
+
     if (!d.ok) { toast('Lỗi dashboard: ' + d.reason, 'er'); return; }
     _dashData = d;
+
+    // Cập nhật _M từ GAS (nếu chọn giải và chưa cache)
+    if (mRes?.rows?.length > 1) {
+      const newRows = normalizeMatchRows(mRes.rows.slice(1));
+      cacheSet(cKeyM, newRows);
+      // Merge: giữ các giải khác, thay giải hiện tại
+      const others = _M.filter(m => String(m[0]||'') !== giaiName);
+      _M = [...others, ...newRows];
+    } else if (cachedM) {
+      // Dùng cache: đảm bảo _M có dữ liệu của giải này
+      const others = _M.filter(m => String(m[0]||'') !== giaiName);
+      const alreadyHas = _M.some(m => String(m[0]||'') === giaiName);
+      if (!alreadyHas) _M = [...others, ...cachedM];
+    }
+
     // Populate giải dropdown nếu có data
     if (d.tournaments?.length) {
       _T = d.tournaments.map(t => [t.id,t.name,t.venue,t.courts,t.startDate,t.endDate,t.status,t.note,t.refs||[]]);
@@ -1984,11 +2010,6 @@ async function loadDash() {
     const filterNdVal    = document.getElementById('dash-nd')?.value   || '';
     const filterBangVal  = document.getElementById('dash-bang')?.value || '';
     _dashPopulateFilters(d, giaiSelectedId, filterNdVal, filterBangVal);
-    // Cập nhật _M từ GAS nếu chưa có hoặc stale
-    if (d.tournaments?.length && _M.length === 0) {
-      // Kích prefetch _M nền
-      prefetchAll();
-    }
     const s = d.summary || {};
     // Cập nhật _dK/_dkScores từ recentResults để renderBangList đồng bộ
     try {
@@ -2071,12 +2092,43 @@ async function loadDash() {
       rw.innerHTML = !rec.length
         ? '<div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả</p></div>'
         : _renderRecentTable(rec);
+      // Nếu _M chưa có → kích load nền để dropdown ND/Bảng sẵn sàng
+      if (_M.length === 0) prefetchAll();
     } else {
       // VIEW FILTER: bảng trận + kết quả
       document.getElementById('dash-view-all').style.display    = 'none';
       document.getElementById('dash-view-filter').style.display = '';
+
+      // ── Đảm bảo _M có dữ liệu của giải đang chọn ──
+      // (loadDash có thể chạy trước prefetch hoàn tất)
+      const giaiForM = _resolveGiaiName(filterGiaiId);
+      const hasMatchData = !giaiForM || _M.some(m => String(m[0]||'') === giaiForM);
+      if (!hasMatchData) {
+        // Hiện loading, load _M, rồi render lại
+        const mWrapLoading = document.getElementById('dash-matches-wrap');
+        if(mWrapLoading) mWrapLoading.innerHTML = '<div class="empty" style="padding:32px"><span class="spin"></span><p style="margin-top:8px;color:var(--tx3)">Đang tải trận đấu...</p></div>';
+        const cKey2 = 'matches_' + giaiForM;
+        const cached2 = cacheGet(cKey2);
+        if (cached2) {
+          const others3 = _M.filter(m => String(m[0]||'') !== giaiForM);
+          _M = [...others3, ...cached2];
+        } else {
+          try {
+            const mRes2 = await gGet({ action:'matches', giai: giaiForM });
+            if (mRes2?.rows?.length > 1) {
+              const newRows2 = normalizeMatchRows(mRes2.rows.slice(1));
+              cacheSet(cKey2, newRows2);
+              const others4 = _M.filter(m => String(m[0]||'') !== giaiForM);
+              _M = [...others4, ...newRows2];
+            }
+          } catch(eM) { console.warn('[loadDash] fetch matches:', eM.message); }
+        }
+        // Cập nhật ND/Bảng dropdown sau khi có _M
+        _dashPopulateFilters(d, filterGiaiId, filterNd, filterBang);
+      }
+
       // Title — dùng giaiName để match với _M
-      const giaiN2 = _resolveGiaiName(filterGiaiId);
+      const giaiN2 = giaiForM || _resolveGiaiName(filterGiaiId);
       const label  = [giaiN2, filterNd, filterBang].filter(Boolean).join(' › ');
       const mTitle = document.getElementById('dash-matches-title');
       if (mTitle) mTitle.textContent = `📋 Trận đấu${label?' — '+label:''}`;
@@ -2294,14 +2346,36 @@ function _renderRecentFromLocal(recs) {
 
 // ── Dashboard cascade filter handlers ──
 function onDashGiaiChange() {
-  const giaiId  = document.getElementById('dash-giai').value;
+  const giaiId   = document.getElementById('dash-giai').value;
   const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
-  const ndSel   = document.getElementById('dash-nd');
-  const bangSel = document.getElementById('dash-bang');
+  const ndSel    = document.getElementById('dash-nd');
+  const bangSel  = document.getElementById('dash-bang');
   if(ndSel)   ndSel.value='';
   if(bangSel) bangSel.value='';
-  // Populate ngay từ _M (không đợi GAS)
+  // Populate ngay từ _M local (những gì đã có)
   _dashPopulateFilters(null, giaiId, '', '');
+  // Nếu _M chưa có dữ liệu giải này → preload ngay (nền), rồi loadDash
+  const alreadyLoaded = giaiName && _M.some(m => String(m[0]||'') === giaiName);
+  if (giaiName && !alreadyLoaded) {
+    const cKey = 'matches_' + giaiName;
+    const cached = cacheGet(cKey);
+    if (cached) {
+      const others = _M.filter(m => String(m[0]||'') !== giaiName);
+      _M = [...others, ...cached];
+      _dashPopulateFilters(null, giaiId, '', '');
+    } else {
+      // Load nền, rồi loadDash sau khi có data
+      gGet({ action:'matches', giai: giaiName }).then(mRes => {
+        if (mRes?.rows?.length > 1) {
+          const newRows = normalizeMatchRows(mRes.rows.slice(1));
+          cacheSet(cKey, newRows);
+          const others2 = _M.filter(m => String(m[0]||'') !== giaiName);
+          _M = [...others2, ...newRows];
+          _dashPopulateFilters(null, giaiId, ndSel?.value||'', bangSel?.value||'');
+        }
+      }).catch(() => {});
+    }
+  }
   loadDash();
 }
 function onDashNdChange() {
