@@ -1454,6 +1454,64 @@ let _rrRows=[], _csvM=[], _csvP=[];                // batch data
 let _dtimer=null, _rtimer=null, _dbt=null;         // timers
 let _curPage='dashboard';                          // trang hiện tại
 
+// ── buildDkFromResults: build _dK, _dkBangCode, _dkScores từ KetQua rows ──
+// Gọi sau mỗi lần có resultData mới
+function buildDkFromResults(rRows) {
+  const dkSet = new Set();
+  const bcSet = new Set();
+  const scores = {};
+  (rRows||[]).forEach(r => {
+    const g  = String(r[1]||'').trim();
+    const bg = String(r[3]||'').trim();
+    const cd = String(r[4]||'').trim();
+    if (!bg || !cd) return;
+    // Thêm key đầy đủ (tên giải|bang|code)
+    dkSet.add(`${g}|${bg}|${cd}`);
+    // Thêm fallback bang|code
+    bcSet.add(`${bg}|${cd}`);
+    // Thêm key mã giải nếu có trong _T
+    const tByName = _T.find(t => String(t[1]||'') === g);
+    if (tByName) dkSet.add(`${String(tByName[0]||'')}|${bg}|${cd}`);
+    // Lưu tỉ số cuối từ KetQua (ghi đè nếu có bản mới hơn)
+    const key = `${bg}|${cd}`;
+    const sA = Number(r[7])||0, sB = Number(r[8])||0;
+    if (!scores[key] || String(r[0]) > String(scores[key].savedAt||'')) {
+      scores[key] = {
+        savedAt: String(r[0]||''),
+        scoreA: sA, scoreB: sB,
+        teamA: String(r[5]||'').trim(),
+        teamB: String(r[6]||'').trim(),
+        winner: String(r[9]||'').trim()
+      };
+    }
+  });
+  _dK = dkSet;
+  _dkBangCode = bcSet;
+  _dkScores   = scores;
+}
+
+// ── Helper: kiểm tra trận đã hoàn thành (dùng mọi nơi) ──
+function isMatchDone(m) {
+  const bg = String(m[2]||''), cd = String(m[3]||'');
+  const bc = `${bg}|${cd}`;
+  // Nhanh nhất: bang|code match
+  if (_dkBangCode.has(bc)) return true;
+  // Fallback full key
+  if (_dK.has(`${m[0]}|${bg}|${cd}`)) return true;
+  return false;
+}
+
+// ── Helper: lấy tỉ số chính thức từ KetQua (hoặc từ _M nếu chưa có) ──
+function getFinalScore(m) {
+  const key = `${m[2]}|${m[3]}`;
+  if (_dkScores[key]) return _dkScores[key];
+  // Fallback: từ _M (Matches sheet)
+  const sA = (m[5]!==''&&m[5]!==null&&m[5]!==undefined) ? Number(m[5]) : null;
+  const sB = (m[6]!==''&&m[6]!==null&&m[6]!==undefined) ? Number(m[6]) : null;
+  if (sA !== null || sB !== null) return { scoreA: sA, scoreB: sB, teamA: String(m[4]||''), teamB: String(m[7]||''), winner:'' };
+  return null;
+}
+
 // ════════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════════
@@ -1762,6 +1820,21 @@ async function loadDash() {
       populateTournamentDropdowns();
     }
     const s = d.summary || {};
+    // Cập nhật _dK từ recentResults (để renderBangList đồng bộ)
+    if (d.recentResults?.length) {
+      // recentResults từ GAS: {time,giai,nd,bang,code,teamA,teamB,scoreA,scoreB,winner}
+      // Build partial _dK update (chỉ thêm, không xóa để giữ data hiện có)
+      d.recentResults.forEach(r => {
+        if (!r.bang || !r.code) return;
+        const bc = `${r.bang}|${r.code}`;
+        _dkBangCode.add(bc);
+        if (r.giai) _dK.add(`${r.giai}|${r.bang}|${r.code}`);
+        if (!_dkScores[bc] && r.scoreA !== undefined) {
+          _dkScores[bc] = { scoreA: Number(r.scoreA)||0, scoreB: Number(r.scoreB)||0,
+                            teamA: r.teamA||'', teamB: r.teamB||'', winner: r.winner||'' };
+        }
+      });
+    }
     document.getElementById('s-total').textContent = s.totalMatches || 0;
     document.getElementById('s-live').textContent  = s.liveMatches  || 0;
     document.getElementById('s-done').textContent  = s.doneMatches  || 0;
@@ -2031,6 +2104,7 @@ function openNdDetail(giaiId, nd) {
     // Chưa có → load lại từ GSheets rồi render
     document.getElementById('bang-list').innerHTML =
       '<div style="text-align:center;padding:40px"><span class="spin"></span></div>';
+    // Tải matches + results + live để _dK/_dkScores luôn mới nhất
     loadMatchesCache(giaiId).then(() => renderBangList(giaiId, nd));
   } else {
     renderBangList(giaiId, nd);
@@ -2050,25 +2124,9 @@ function renderBangList(giaiId, nd) {
     return;
   }
 
-  // ── Helpers: kiểm tra trạng thái từng trận ──────────────────
-  // done: thử nhiều key variants vì giai có thể là tên hoặc mã
-  function isDone(m) {
-    const bg = String(m[2]||''), cd = String(m[3]||'');
-    if (_dK.has(`${m[0]}|${bg}|${cd}`)) return true;
-    if (giaiName && _dK.has(`${giaiName}|${bg}|${cd}`)) return true;
-    if (giaiId   && _dK.has(`${giaiId}|${bg}|${cd}`))   return true;
-    // Fallback: tìm theo bang|code không kể giai prefix
-    for (const dk of _dK) {
-      const p = dk.split('|');
-      if (p.length >= 3 && p[p.length-2] === bg && p[p.length-1] === cd) return true;
-    }
-    return false;
-  }
-  // live: đang đấu THỰC SỰ = có trong LiveScore VÀ chưa done
-  function isLive(m) {
-    if (isDone(m)) return false; // done luôn thắng live
-    return _lK.has(`${m[1]}|${m[2]}|${m[3]}`);
-  }
+  // Dùng global helpers isMatchDone() và _lK cho live check
+  const isDone = m => isMatchDone(m);
+  const isLive = m => !isMatchDone(m) && _lK.has(`${m[1]}|${m[2]}|${m[3]}`);
 
   wrap.innerHTML = bangs.map(bang => {
     const matches = _M.filter(m=>matchGiai(m)&&String(m[1]||'')===nd&&String(m[2]||'')===bang);
@@ -2135,15 +2193,16 @@ function renderBangList(giaiId, nd) {
               const refCell = assignedRefs.length
                 ? assignedRefs.map(n=>`<span style="font-size:10px;background:rgba(99,179,237,.15);color:var(--ac2);border-radius:4px;padding:1px 5px;white-space:nowrap">${n}</span>`).join(' ')
                 : '<span style="color:var(--tx3);font-size:11px">—</span>';
-              // Tỉ số: live realtime, else từ Matches sheet
+              // Tỉ số: live realtime nếu đang đấu, ngược lại lấy từ KetQua/Matches
               let sA, sB;
               const lk = `${m[1]}|${m[2]}|${m[3]}`;
               if (live && _liveScores[lk]) {
                 sA = _liveScores[lk].scoreA;
                 sB = _liveScores[lk].scoreB;
               } else {
-                sA = (m[5]!==''&&m[5]!==null&&m[5]!==undefined) ? Number(m[5]) : null;
-                sB = (m[6]!==''&&m[6]!==null&&m[6]!==undefined) ? Number(m[6]) : null;
+                const fs = getFinalScore(m);
+                sA = fs ? fs.scoreA : null;
+                sB = fs ? fs.scoreB : null;
               }
               const scoreColor = done ? 'var(--gn)' : live ? 'var(--or)' : 'var(--ac)';
               const sAcell = sA!==null&&sA!==undefined
@@ -3026,17 +3085,7 @@ async function loadMatchesCache(giaiId='') {
     } else {
       _M = normalizeMatchRows(md.rows?.slice(1)||[]);
     }
-    // _dK: build cả theo giaiName và giaiId để match được dù m[0] là tên hay mã
-    const dkRows = rd.rows?.slice(1)||[];
-    const dkSet  = new Set();
-    dkRows.forEach(r => {
-      const g = String(r[1]||''), bg = String(r[3]||''), cd = String(r[4]||'');
-      dkSet.add(`${g}|${bg}|${cd}`); // tên giải (từ KetQua)
-      // Thêm cả mã giải để fallback
-      const t = _T.find(t => String(t[1]||'') === g);
-      if (t) dkSet.add(`${String(t[0]||'')}|${bg}|${cd}`);
-    });
-    _dK = dkSet;
+    buildDkFromResults(rd.rows?.slice(1)||[]);
     _lK = new Set((ld.rows?.slice(1)||[]).map(r=>String(r[0]||'')));
   } catch(e) { console.error('loadMatchesCache error', e); }
 }
@@ -3109,8 +3158,8 @@ function renderBracket() {
       var k=m[0]+'|'+m[2]+'|'+m[3];
       if(!table[tA]) table[tA]={team:tA,pts:0,won:0,pf:0,pa:0};
       if(!table[tB]) table[tB]={team:tB,pts:0,won:0,pf:0,pa:0};
-      if(!_dK.has(k)) return;
-      var sA=Number(m[5]||0),sB=Number(m[6]||0);
+      if(!isMatchDone(m)) return;
+      const fs1=getFinalScore(m),sA=fs1?fs1.scoreA:0,sB=fs1?fs1.scoreB:0;
       table[tA].pf+=sA;table[tA].pa+=sB;
       table[tB].pf+=sB;table[tB].pa+=sA;
       if(sA>sB){table[tA].pts+=2;table[tA].won++;}
@@ -3171,15 +3220,16 @@ function renderBracket() {
       html += '<div style="display:flex;flex-direction:column;gap:'+gap+'px">';
       if (rMatches.length) {
         rMatches.forEach(function(m){
-          var k    = m[0]+'|'+m[2]+'|'+m[3];
-          var done = _dK.has(k);
-          var live = _lK.has(k);
-          var sA   = (m[5]!==''&&m[5]!==undefined)?m[5]:'—';
-          var sB   = (m[6]!==''&&m[6]!==undefined)?m[6]:'—';
+          var done = isMatchDone(m);
+          var lkBr = m[1]+'|'+m[2]+'|'+m[3];
+          var live = !done && _lK.has(lkBr);
+          var fsBr = getFinalScore(m);
+          var sA   = fsBr&&fsBr.scoreA!==null ? fsBr.scoreA : '—';
+          var sB   = fsBr&&fsBr.scoreB!==null ? fsBr.scoreB : '—';
           var tA   = m[4]||'TBD';
           var tB   = m[7]||'TBD';
-          var isWinA = done && Number(m[5]||0)>Number(m[6]||0);
-          var isWinB = done && Number(m[6]||0)>Number(m[5]||0);
+          var isWinA = done && Number(sA||0)>Number(sB||0);
+          var isWinB = done && Number(sB||0)>Number(sA||0);
           var bdrColor = live?'var(--or)':done?'var(--gn)':'var(--bdr)';
 
           html += '<div style="background:var(--bg3);border:1px solid '+bdrColor+';border-radius:8px;overflow:hidden;font-size:12px">';
@@ -3254,7 +3304,7 @@ async function genKnockout(giaiId, nd) {
       const k=`${m[0]}|${m[2]}|${m[3]}`;
       if(!table[tA])table[tA]={team:tA,pts:0,pf:0,pa:0};
       if(!table[tB])table[tB]={team:tB,pts:0,pf:0,pa:0};
-      if(!_dK.has(k))return;
+      if(!isMatchDone(m))return;
       const sA=Number(m[5]||0),sB=Number(m[6]||0);
       table[tA].pf+=sA;table[tA].pa+=sB;
       table[tB].pf+=sB;table[tB].pa+=sA;
@@ -4165,16 +4215,7 @@ async function loadMatches() {
       gGet({ action:'live', code:'all', giai })
     ]);
     _M = normalizeMatchRows(md.rows?.slice(1) || []);
-    // _dK: thêm cả tên giải + mã giải để match đúng
-    const dkRows2 = rd.rows?.slice(1)||[];
-    const dkSet2  = new Set();
-    dkRows2.forEach(r => {
-      const g = String(r[1]||''), bg = String(r[3]||''), cd = String(r[4]||'');
-      dkSet2.add(`${g}|${bg}|${cd}`);
-      const t2 = _T.find(t => String(t[1]||'') === g);
-      if (t2) dkSet2.add(`${String(t2[0]||'')}|${bg}|${cd}`);
-    });
-    _dK = dkSet2;
+    buildDkFromResults(rd.rows?.slice(1)||[]);
     _lK = new Set((ld.rows?.slice(1)||[]).map(r => String(r[0]||'')));
     // Cập nhật dropdown ND
     onMGiaiChange(true);
@@ -4206,11 +4247,12 @@ function filterMatches() {
     if (nd   && String(r[1]||'') !== nd)   return false;
     if (bang && String(r[2]||'') !== bang)  return false;
     if (st) {
-      const k = `${r[0]}|${r[2]}|${r[3]}`;
       const lk = `${r[1]}|${r[2]}|${r[3]}`;
-      if (st==='done'    && !_dK.has(k))  return false;
-      if (st==='live'    && !_lK.has(lk)) return false;
-      if (st==='pending' && (_dK.has(k)||_lK.has(lk))) return false;
+      const done = isMatchDone(r);
+      const live = !done && _lK.has(lk);
+      if (st==='done'    && !done)        return false;
+      if (st==='live'    && !live)        return false;
+      if (st==='pending' && (done||live)) return false;
     }
     if (q) return [r[0],r[1],r[2],r[3],r[4],r[7],r[8]].some(v=>String(v||'').toLowerCase().includes(q));
     return true;
@@ -4221,20 +4263,35 @@ function renderMatches(rows) {
   const tb = document.getElementById('mtb');
   if (!rows.length) { tb.innerHTML = emptyRow(11,'📋','Không có trận nào'); return; }
   tb.innerHTML = rows.map(r => {
-    const k    = `${r[0]}|${r[2]}|${r[3]}`;
+    const done = isMatchDone(r);
     const lk   = `${r[1]}|${r[2]}|${r[3]}`;
-    const done = _dK.has(k), live = _lK.has(lk);
-    const sb   = done ? '<span class="bdg bo">✅ Xong</span>' : live ? '<span class="bdg bw">🟠 Live</span>' : '<span class="bdg bg0">⬜ Chưa</span>';
-    const sA   = r[5]!==''&&r[5]!==undefined ? r[5] : '—';
-    const sB   = r[6]!==''&&r[6]!==undefined ? r[6] : '—';
+    const live = !done && _lK.has(lk); // live chỉ khi chưa done
+    // Tỉ số: live realtime → KetQua → Matches
+    let sA, sB;
+    if (live && _liveScores[lk]) {
+      sA = _liveScores[lk].scoreA; sB = _liveScores[lk].scoreB;
+    } else {
+      const fs = getFinalScore(r);
+      sA = fs ? fs.scoreA : null; sB = fs ? fs.scoreB : null;
+    }
+    const scoreColor = done ? 'var(--gn)' : live ? 'var(--or)' : 'var(--ac)';
+    const sAstr = sA!==null&&sA!==undefined ? `<span style="font-family:var(--mo);color:${scoreColor};font-weight:900">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
+    const sBstr = sB!==null&&sB!==undefined ? `<span style="font-family:var(--mo);color:${scoreColor};font-weight:900">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
+    const sb = done
+      ? '<span class="bdg bo" style="font-size:10px">✅ Xong</span>'
+      : live
+        ? '<span class="bdg bw" style="font-size:10px">⚡ Live</span>'
+        : '<span class="bdg bg0" style="font-size:10px">⬜ Chưa</span>';
     const g=esc(r[0]),nd=esc(r[1]),bg=esc(r[2]),cd=esc(r[3]);
-    return `<tr>
+    const rowStyle = done ? ' style="background:rgba(34,197,94,.03)"'
+      : live ? ' style="background:rgba(245,158,11,.05);border-left:2px solid var(--or)"' : '';
+    return `<tr${rowStyle}>
       <td style="font-size:12px;color:var(--tx2)">${r[1]||''}</td>
       <td style="color:var(--ac2);font-size:12px;font-weight:600">${r[2]||''}</td>
       <td><span class="mono">${r[3]||''}</span></td>
       <td style="font-size:12px;font-weight:600">${r[4]||'—'}</td>
-      <td style="text-align:center;font-family:var(--mo);color:var(--ac);font-weight:700">${sA}</td>
-      <td style="text-align:center;font-family:var(--mo);color:var(--or);font-weight:700">${sB}</td>
+      <td style="text-align:center">${sAstr}</td>
+      <td style="text-align:center">${sBstr}</td>
       <td style="font-size:12px;font-weight:600">${r[7]||'—'}</td>
       <td style="font-size:12px;color:var(--ac)">${r[8]||'—'}</td>
       <td>${sb}</td>
@@ -4446,18 +4503,26 @@ function filterResults() {
 function renderResults(rows) {
   const tb = document.getElementById('r-tb');
   if (!rows.length) { tb.innerHTML = emptyRow(11,'🎯','Chưa có kết quả'); return; }
-  tb.innerHTML = rows.map(r => `<tr>
-    <td style="font-size:11px;color:var(--tx3)">${r[0]||'—'}</td>
-    <td style="font-size:11px;color:var(--ac)">${r[1]||'—'}</td>
-    <td style="font-size:12px">${r[2]||'—'}</td>
-    <td><span class="mono">${r[4]||'—'}</span><br><small style="color:var(--tx3)">${r[3]||''}</small></td>
-    <td style="${r[9]===r[5]?'color:var(--gn);font-weight:700':''}">${r[5]||'—'}</td>
-    <td style="font-family:var(--mo);color:var(--ac);font-weight:700;text-align:center">${r[7]||0}</td>
-    <td style="font-family:var(--mo);color:var(--or);font-weight:700;text-align:center">${r[8]||0}</td>
-    <td style="${r[9]===r[6]?'color:var(--gn);font-weight:700':''}">${r[6]||'—'}</td>
-    <td style="color:var(--gn);font-weight:700">🏆 ${r[9]||'—'}</td>
-    <td style="font-size:12px;color:var(--ac)">${r[10]||'—'}</td>
-    <td style="font-size:12px;color:var(--tx3)">${r[11]||'—'}</td></tr>`).join('');
+  // KetQua: Thời gian(0)|Giải(1)|Nội dung(2)|Bảng(3)|Mã(4)|ĐA(5)|ĐB(6)|ĐiểmA(7)|ĐiểmB(8)|Thắng(9)|Sân(10)|TT(11)
+  tb.innerHTML = rows.map(r => {
+    const sA = Number(r[7])||0, sB = Number(r[8])||0;
+    const winner = String(r[9]||'');
+    const isWinA = winner && winner === String(r[5]||'');
+    const isWinB = winner && winner === String(r[6]||'');
+    return `<tr>
+      <td style="font-size:11px;color:var(--tx3);white-space:nowrap">${r[0]||'—'}</td>
+      <td style="font-size:11px;color:var(--ac)">${r[1]||'—'}</td>
+      <td style="font-size:12px">${r[2]||'—'}</td>
+      <td><span class="mono">${r[4]||'—'}</span><br><small style="color:var(--tx3)">${r[3]||''}</small></td>
+      <td style="font-weight:${isWinA?'700':'400'};color:${isWinA?'var(--gn)':'var(--tx)'}">${r[5]||'—'}</td>
+      <td style="font-family:var(--mo);font-size:14px;font-weight:900;color:${isWinA?'var(--gn)':'var(--ac)'};text-align:center">${sA}</td>
+      <td style="font-family:var(--mo);font-size:14px;font-weight:900;color:${isWinB?'var(--gn)':'var(--ac)'};text-align:center">${sB}</td>
+      <td style="font-weight:${isWinB?'700':'400'};color:${isWinB?'var(--gn)':'var(--tx)'}">${r[6]||'—'}</td>
+      <td style="color:var(--gn);font-weight:700;white-space:nowrap">🏆 ${winner||'—'}</td>
+      <td style="font-size:11px;color:var(--ac2)">${r[10]||'—'}</td>
+      <td style="font-size:11px;color:var(--tx3)">${r[11]||'—'}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════════════════════════
