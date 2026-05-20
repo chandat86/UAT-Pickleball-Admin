@@ -2305,13 +2305,12 @@ function clearDashFilter() {
 function _renderLiveTable(matches) {
   if (!matches.length) return '<div class="empty"><div class="ei">📡</div><p>Không có trận đang thi đấu</p></div>';
   return `<div class="tw"><table class="tbl" style="font-size:12px"><thead><tr>
-    <th style="white-space:nowrap">Bảng · Mã</th>
-    <th>Đội A</th>
-    <th style="text-align:center;width:48px">A</th>
-    <th style="text-align:center;width:48px">B</th>
-    <th>Đội B</th>
-    <th style="text-align:center;white-space:nowrap">Game</th>
-    <th style="white-space:nowrap">Sân</th>
+    <th style="white-space:nowrap;min-width:90px">Nội dung · Bảng · Mã</th>
+    <th style="min-width:140px">Đội A</th>
+    <th style="text-align:center;width:52px">A</th>
+    <th style="text-align:center;width:52px">B</th>
+    <th style="min-width:140px">Đội B</th>
+    <th style="white-space:nowrap;min-width:70px">Sân</th>
   </tr></thead><tbody>${matches.map(m=>{
     const lk = `${m[1]}|${m[2]}|${m[3]}`;
     const ls = _liveScores[lk] || {};
@@ -2321,15 +2320,19 @@ function _renderLiveTable(matches) {
     const leadB = (typeof sA==='number' && typeof sB==='number') ? sB>sA : false;
     return `<tr style="background:rgba(245,158,11,.05);border-left:3px solid var(--or)">
       <td style="white-space:nowrap">
-        <span style="font-weight:700;color:var(--ac2)">${m[2]||''}</span>
-        <span style="color:var(--tx3);font-size:11px"> · </span>
-        <span class="mono" style="color:var(--ac)">${m[3]||''}</span>
+        <div style="font-size:10px;color:var(--tx3)">${m[1]||''}</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-weight:700;color:var(--ac2)">${m[2]||''}</span>
+          <span style="color:var(--tx3)">·</span>
+          <span class="mono" style="color:var(--ac);font-weight:700">${m[3]||''}</span>
+        </div>
       </td>
-      <td style="font-weight:${leadA?700:500};color:${leadA?'var(--tx)':'var(--tx2)'};max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
-      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:16px;color:${leadA?'var(--gn)':'var(--or)'}">${sA}</td>
-      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:16px;color:${leadB?'var(--gn)':'var(--or)'}">${sB}</td>
-      <td style="font-weight:${leadB?700:500};color:${leadB?'var(--tx)':'var(--tx2)'};max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
-      <td style="text-align:center"><span class="bdg bw" style="font-size:10px">${ls.game||'Game 1'}</span></td>
+      <td style="font-weight:${leadA?700:400};color:${leadA?'var(--tx)':'var(--tx2)'};max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${m[4]||''}">${m[4]||'TBD'}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:18px;color:${leadA?'var(--gn)':'var(--or)'};padding:8px">${sA}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:18px;color:${leadB?'var(--gn)':'var(--or)'};padding:8px">${sB}</td>
+      <td style="font-weight:${leadB?700:400};color:${leadB?'var(--tx)':'var(--tx2)'};max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${m[7]||''}">${m[7]||'TBD'}</td>
       <td style="font-size:11px;color:var(--ac2);white-space:nowrap">${m[8]||'—'}</td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
@@ -2380,18 +2383,14 @@ function _renderMatchTable(matches) {
     return `<div style="margin-bottom:12px;border:1px solid var(--bdr);border-radius:10px;overflow:hidden" id="${bangId}">
       <!-- Bang header — click để thu gọn -->
       <div onclick="_toggleBang('${bang.replace(/'/g,"&#39;")}','${bangId}')"
-        style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--bg4);cursor:pointer;user-select:none;
+        style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg4);cursor:pointer;user-select:none;
           border-bottom:${collapsed?'none':'1px solid var(--bdr)'}">
-        <span style="font-weight:800;color:var(--ac2);font-size:14px">Bảng ${bang}</span>
-        <span style="font-size:11px;color:var(--tx3)">${ms.length} trận</span>
-        ${lC>0?`<span class="bdg bw" style="font-size:10px">⚡ ${lC} live</span>`:''}
-        ${dC>0?`<span class="bdg bo" style="font-size:10px">✅ ${dC}</span>`:''}
-        ${pC>0?`<span class="bdg bg0" style="font-size:10px;opacity:.8">⬜ ${pC}</span>`:''}
-        <div style="flex:1;margin:0 8px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${pct===100?'var(--gn)':'linear-gradient(90deg,var(--ac),var(--gn))'};border-radius:3px"></div>
-        </div>
-        <span style="font-size:11px;color:var(--tx3)">${pct}%</span>
-        <span style="font-size:14px;color:var(--tx3);transition:transform .2s;transform:rotate(${collapsed?'-90deg':'0deg'})" id="arrow-${bangId}">▾</span>
+        <span style="font-size:20px;color:var(--tx3);line-height:1;transition:transform .25s;transform:rotate(${collapsed?'-90deg':'0deg'})" id="arrow-${bangId}">▾</span>
+        <span style="font-weight:800;color:var(--ac2);font-size:15px">Bảng ${bang}</span>
+        <span style="font-size:11px;color:var(--tx3);font-weight:500">${ms.length} trận</span>
+        ${lC>0?`<span class="bdg bw" style="font-size:10px;font-weight:700">⚡ ${lC} live</span>`:''}
+        ${dC>0?`<span class="bdg bo" style="font-size:10px;font-weight:700">✅ ${dC} xong</span>`:''}
+        ${pC>0?`<span style="font-size:10px;color:var(--tx3)">⬜ ${pC} chưa</span>`:''}
       </div>
       <!-- Bang body — ẩn khi thu gọn -->
       <div id="body-${bangId}" style="display:${collapsed?'none':'block'}">
