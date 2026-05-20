@@ -1449,7 +1449,7 @@ async function prefetchAll() {
       gGet({ action: 'matches', giai: giaiParam })
     ]);
     _T = tRes.rows?.slice(1) || [];
-    _M = mRes.rows?.slice(1) || [];
+    _M = normalizeMatchRows(mRes.rows?.slice(1) || []);
     populateTournamentDropdowns();
     // Render tournament cards nếu đang ở trang tournaments
     if (document.getElementById('tv-list')) renderTournCards(_T);
@@ -1808,9 +1808,12 @@ function renderNdCards(r) {
     const colors = ['var(--ac)','var(--gn)','var(--or)','var(--pu)','var(--cy)'];
     const c = colors[i % colors.length];
     const ndId = esc(nd);
-    // Đếm trận trong nội dung này từ cache _M
-    const matchCount = _M.filter(m => String(m[0]||'')===String(r[0]||'') && String(m[1]||'')===nd).length;
-    const bangs = [...new Set(_M.filter(m=>String(m[0]||'')===String(r[0]||'')&&String(m[1]||'')===nd).map(m=>String(m[2]||'')).filter(Boolean))];
+    const rId   = String(r[0]||'');
+    const rName = String(r[1]||'');
+    // Đếm trận — match cả theo mã lẫn tên giải
+    const mFilter = m => { const v=String(m[0]||''); return (v===rId||(rName&&v===rName)) && String(m[1]||'')===nd; };
+    const matchCount = _M.filter(mFilter).length;
+    const bangs = [...new Set(_M.filter(mFilter).map(m=>String(m[2]||'')).filter(Boolean))];
     return `<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:16px;
               cursor:pointer;transition:all .15s;border-top:3px solid ${c}"
               onmouseover="this.style.boxShadow='0 0 0 1px ${c}33'" onmouseout="this.style.boxShadow='none'"
@@ -1835,16 +1838,32 @@ function openNdDetail(giaiId, nd) {
   const r = _T.find(t=>String(t[0]||'')===giaiId);
   if (!r) return;
   _curTourn = r;
+  const giaiName = String(r[1]||'');
   document.getElementById('tv-nd-title').textContent = nd;
-  document.getElementById('tv-nd-sub').textContent   = (r[1]||giaiId) + ' · ' + (r[2]||'');
+  document.getElementById('tv-nd-sub').textContent   = giaiName + ' · ' + (r[2]||'');
   showTournView('nd');
-  renderBangList(giaiId, nd);
+  // Kiểm tra xem _M đã có data của giải này chưa (so sánh cả mã lẫn tên)
+  const hasData = _M.some(m => {
+    const v = String(m[0]||'');
+    return (v === giaiId || v === giaiName) && String(m[1]||'') === nd;
+  });
+  if (!hasData) {
+    // Chưa có → load lại từ GSheets rồi render
+    document.getElementById('bang-list').innerHTML =
+      '<div style="text-align:center;padding:40px"><span class="spin"></span></div>';
+    loadMatchesCache(giaiId).then(() => renderBangList(giaiId, nd));
+  } else {
+    renderBangList(giaiId, nd);
+  }
 }
 
 // ── Render danh sách bảng + trận ──
 function renderBangList(giaiId, nd) {
-  const wrap   = document.getElementById('bang-list');
-  const bangs  = [...new Set(_M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd).map(m=>String(m[2]||'')).filter(Boolean))];
+  const wrap     = document.getElementById('bang-list');
+  const giaiName = String((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||'');
+  // Filter _M theo mã HOẶC tên giải (để tương thích cả 2 format cũ/mới)
+  const matchGiai = m => { const v=String(m[0]||''); return v===giaiId || (giaiName && v===giaiName); };
+  const bangs  = [...new Set(_M.filter(m=>matchGiai(m)&&String(m[1]||'')===nd).map(m=>String(m[2]||'')).filter(Boolean))];
   // Sort bảng theo natural sort (Bảng A, Bảng B, ...)
   bangs.sort((a,b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:'base'}));
   if (!bangs.length) {
@@ -1853,7 +1872,7 @@ function renderBangList(giaiId, nd) {
     return;
   }
   wrap.innerHTML = bangs.map(bang => {
-    const matches = _M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd&&String(m[2]||'')===bang);
+    const matches = _M.filter(m=>matchGiai(m)&&String(m[1]||'')===nd&&String(m[2]||'')===bang);
     // Sort theo mã tăng dần (A1, A2, ..., A10 dùng natural sort)
     matches.sort((a,b) => String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true, sensitivity:'base'}));
     const teams   = [...new Set(matches.flatMap(m=>[m[4],m[7]]).filter(Boolean))];
@@ -2590,36 +2609,62 @@ async function saveBang() {
 }
 
 // Load matches nhẹ (chỉ lấy cache, không render table)
+// Build a name→id lookup from _T for normalization
+function buildGiaiNameMap() {
+  const map = {};
+  _T.forEach(t => {
+    const id   = String(t[0]||'');
+    const name = String(t[1]||'');
+    if (id && name && name !== id) map[name] = id;
+  });
+  return map;
+}
+// Normalize một mảng rows: đổi m[0] từ tên → mã nếu tìm thấy
+function normalizeMatchRows(rows) {
+  const nameMap = buildGiaiNameMap();
+  return rows.map(r => {
+    const key = String(r[0]||'');
+    if (nameMap[key]) {
+      const nr = [...r]; nr[0] = nameMap[key]; return nr;
+    }
+    return r;
+  });
+}
+
 async function loadMatchesCache(giaiId='') {
   try {
-    // Lấy cả theo mã lẫn tên giải (vì data cũ dùng mã, data mới dùng tên)
     const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||'') : '';
+    // Fetch theo cả mã lẫn tên để đảm bảo lấy đủ
     const fetchById   = giaiId   ? gGet({action:'matches',giai:giaiId})   : Promise.resolve({rows:[]});
-    const fetchByName = giaiName && giaiName!==giaiId ? gGet({action:'matches',giai:giaiName}) : Promise.resolve({rows:[]});
-    const [md,rd,ld,md2] = await Promise.all([
+    const fetchByName = (giaiName && giaiName!==giaiId) ? gGet({action:'matches',giai:giaiName}) : Promise.resolve({rows:[]});
+    const [md, rd, ld, md2] = await Promise.all([
       fetchById,
-      gGet({action:'results',giai:giaiName||giaiId}),
-      gGet({action:'live',code:'all',giai:giaiName||giaiId}),
+      gGet({action:'results', giai:giaiName||giaiId}),
+      gGet({action:'live',    code:'all', giai:giaiName||giaiId}),
       fetchByName
     ]);
-    if(giaiId) {
-      // Gộp kết quả từ cả 2 queries, loại trùng bằng key giai|bang|code
-      const byId   = (md.rows?.slice(1)  || []);
-      const byName = (md2.rows?.slice(1) || []);
+
+    if (giaiId) {
+      // Gộp + loại trùng theo key bang|code (bỏ qua m[0] vì có thể khác nhau)
+      const byId   = normalizeMatchRows(md.rows?.slice(1)  || []);
+      const byName = normalizeMatchRows(md2.rows?.slice(1) || []);
       const seen   = new Set();
       const merged = [...byId, ...byName].filter(r => {
-        const k = `${r[0]}|${r[2]}|${r[3]}`;
+        const k = `${r[2]}|${r[3]}`; // bang|code — đủ unique trong 1 giải
         if (seen.has(k)) return false;
         seen.add(k); return true;
       });
-      // Xóa cả theo mã lẫn tên, rồi thêm merged
-      _M = _M.filter(m => String(m[0]||'')!==giaiId && String(m[0]||'')!==giaiName).concat(merged);
+      // Xóa cả mã lẫn tên cũ, thêm merged (đã normalize về mã)
+      _M = _M.filter(m => {
+        const v = String(m[0]||'');
+        return v !== giaiId && v !== giaiName;
+      }).concat(merged);
     } else {
-      _M = md.rows?.slice(1)||[];
+      _M = normalizeMatchRows(md.rows?.slice(1)||[]);
     }
     _dK = new Set((rd.rows?.slice(1)||[]).map(r=>`${r[1]}|${r[3]}|${r[4]}`));
     _lK = new Set((ld.rows?.slice(1)||[]).map(r=>String(r[0]||'')));
-  } catch(e) {}
+  } catch(e) { console.error('loadMatchesCache error', e); }
 }
 
 // ════════════════════════════════════════════════════════════════
