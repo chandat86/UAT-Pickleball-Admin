@@ -825,8 +825,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <!-- Danh sách TT + phân công inline -->
       <div class="tw">
         <table class="tbl">
-          <thead><tr><th>Mã</th><th>Họ tên</th><th>Nội dung</th><th>Sân phân</th><th>Vòng phân</th><th>Hành động</th><th>Trạng thái</th></tr></thead>
-          <tbody id="asgn-tb"><tr><td colspan="7" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
+          <thead><tr><th>Mã</th><th>Họ tên</th><th>Giải phân</th><th>Nội dung</th><th>Sân phân</th><th>Vòng phân</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+          <tbody id="asgn-tb"><tr><td colspan="8" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
         </table>
       </div>
 
@@ -926,8 +926,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       </div>
       <div class="tw">
         <table class="tbl">
-          <thead><tr><th>Mã</th><th>Họ tên</th><th>Vai trò</th><th>Nội dung</th><th>Sân</th><th>Vòng</th><th>Hết hạn</th><th>Ghi chú</th><th></th></tr></thead>
-          <tbody id="u-tb"><tr><td colspan="9" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
+          <thead><tr><th>Mã</th><th>Họ tên</th><th>Vai trò</th><th>Giải phân</th><th>Nội dung</th><th>Sân</th><th>Vòng</th><th>Hết hạn</th><th>Ghi chú</th><th></th></tr></thead>
+          <tbody id="u-tb"><tr><td colspan="10" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1817,6 +1817,8 @@ function renderBangList(giaiId, nd) {
   }
   wrap.innerHTML = bangs.map(bang => {
     const matches = _M.filter(m=>String(m[0]||'')===giaiId&&String(m[1]||'')===nd&&String(m[2]||'')===bang);
+    // Sort theo mã tăng dần (A1, A2, ..., A10 dùng natural sort)
+    matches.sort((a,b) => String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true, sensitivity:'base'}));
     const teams   = [...new Set(matches.flatMap(m=>[m[4],m[7]]).filter(Boolean))];
     const doneC   = matches.filter(m=>{const k=`${m[0]}|${m[2]}|${m[3]}`;return _dK.has(k);}).length;
     const liveC   = matches.filter(m=>{const k=`${m[0]}|${m[2]}|${m[3]}`;return _lK.has(k);}).length;
@@ -1842,19 +1844,30 @@ function renderBangList(giaiId, nd) {
       <!-- Match list -->
       <div class="tw">
         <table class="tbl" style="font-size:12px">
-          <thead><tr><th>Mã</th><th>Đội A</th><th style="text-align:center">A</th><th style="text-align:center">B</th><th>Đội B</th><th>Sân</th><th>Trạng thái</th></tr></thead>
+          <thead><tr><th>Đội A</th><th style="text-align:center">A</th><th style="text-align:center">B</th><th>Đội B</th><th>Sân</th><th>Trọng tài</th><th>Trạng thái</th></tr></thead>
           <tbody>
             ${matches.length ? matches.map(m => {
               const k   = `${m[0]}|${m[2]}|${m[3]}`;
               const done = _dK.has(k), live = _lK.has(k);
               const sb  = done?'<span class="bdg bo" style="font-size:10px">✅</span>':live?'<span class="bdg bw" style="font-size:10px">🟠</span>':'<span class="bdg bg0" style="font-size:10px">⬜</span>';
+              // Trọng tài được phân công sân này trong giải này
+              const matchCourt = String(m[8]||'').trim().toLowerCase();
+              const matchGiai  = String(m[0]||'');
+              const assignedRefs = _U.filter(u => {
+                const uGiai = String(u[8]||'');
+                if (uGiai && uGiai !== matchGiai) return false;
+                if (!matchCourt) return false;
+                const uCourts = String(u[3]||'').split(',').map(c=>c.trim().toLowerCase()).filter(Boolean);
+                return uCourts.includes(matchCourt);
+              }).map(u=>String(u[1]||u[0]||'')).filter(Boolean);
+              const refCell = assignedRefs.length ? assignedRefs.map(n=>`<span style="font-size:10px;background:rgba(99,179,237,.15);color:var(--ac2);border-radius:4px;padding:1px 5px;white-space:nowrap">${n}</span>`).join(' ') : '<span style="color:var(--tx3);font-size:11px">—</span>';
               return `<tr>
-                <td><span class="mono">${m[3]}</span></td>
                 <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
                 <td style="text-align:center;font-family:var(--mo);color:var(--ac);font-weight:700">${m[5]!==''&&m[5]!==undefined?m[5]:'—'}</td>
                 <td style="text-align:center;font-family:var(--mo);color:var(--or);font-weight:700">${m[6]!==''&&m[6]!==undefined?m[6]:'—'}</td>
                 <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
                 <td style="color:var(--ac2);font-size:11px">${m[8]||'—'}</td>
+                <td>${refCell}</td>
                 <td>${sb}</td>
               </tr>`;
             }).join('') : `<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--tx3)">Chưa có trận</td></tr>`}
@@ -3024,7 +3037,7 @@ function filterAssign() {
 }
 function renderAssign(rows) {
   const tb = document.getElementById('asgn-tb');
-  if (!rows.length) { tb.innerHTML = emptyRow(7,'👥','Không có trọng tài nào'); return; }
+  if (!rows.length) { tb.innerHTML = emptyRow(8,'👥','Không có trọng tài nào'); return; }
   tb.innerHTML = rows.map(r => {
     const st = String(r[7]||'active').toLowerCase();
     const bc = st==='manager'?'bm':st==='khóa'?'bk':'bo';
@@ -3035,11 +3048,12 @@ function renderAssign(rows) {
     return `<tr>
       <td><span class="mono">${r[0]}</span></td>
       <td style="font-weight:600">${r[1]}</td>
+      <td style="font-size:11px;color:var(--ac)">${r[8]||'—'}</td>
       <td style="font-size:11px;color:var(--tx2)">${r[9]||'—'}</td>
       <td>${hasCourts ? String(r[3]).split(',').map(c=>`<span class="ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--rd);font-size:11px">⚠️ Trống</span>'}</td>
       <td>${hasRounds ? String(r[4]).split(',').map(c=>`<span class="ptago ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--rd);font-size:11px">⚠️ Trống</span>'}</td>
-      <td><button class="btn bp bsm" onclick="openAssignMo('${cd}','${nm}','${esc(r[3])}','${esc(r[4])}','${esc(r[8])}','${esc(r[9])}')">📌 Phân công</button></td>
-      <td><span class="bdg ${bc}">${bl}</span></td></tr>`;
+      <td><span class="bdg ${bc}">${bl}</span></td>
+      <td><button class="btn bp bsm" onclick="openAssignMo('${cd}','${nm}','${esc(r[3])}','${esc(r[4])}','${esc(r[8])}','${esc(r[9])}')">📌 Phân công</button></td></tr>`;
   }).join('');
 }
 function openAssignMo(code,name,courts,rounds,giai,nd) {
@@ -3149,15 +3163,6 @@ function filterMatches() {
     }
     if (q) return [r[0],r[1],r[2],r[3],r[4],r[7],r[8]].some(v=>String(v||'').toLowerCase().includes(q));
     return true;
-  });
-  // Sắp xếp tăng dần: theo bảng rồi theo mã (A1 < A2 < ... < A10)
-  rows.sort((a,b) => {
-    const bangCmp = String(a[2]||'').localeCompare(String(b[2]||''), 'vi');
-    if (bangCmp !== 0) return bangCmp;
-    const codeA = String(a[3]||''), codeB = String(b[3]||'');
-    const prefA = codeA.replace(/\d+$/,''), prefB = codeB.replace(/\d+$/,'');
-    if (prefA !== prefB) return prefA.localeCompare(prefB, 'vi');
-    return (parseInt(codeA.match(/\d+$/)?.[0]||0)) - (parseInt(codeB.match(/\d+$/)?.[0]||0));
   });
   renderMatches(rows);
 }
@@ -3428,7 +3433,7 @@ function filterUsers() {
 }
 function renderUsers(rows) {
   const tb = document.getElementById('u-tb');
-  if (!rows.length) { tb.innerHTML = emptyRow(9,'👥','Không có trọng tài'); return; }
+  if (!rows.length) { tb.innerHTML = emptyRow(10,'👥','Không có trọng tài'); return; }
   tb.innerHTML = rows.map(r => {
     const st=String(r[7]||'active').toLowerCase();
     const bc=st==='admin'?'ba':st==='manager'?'bm':st==='khóa'?'bk':'bo';
@@ -3442,6 +3447,7 @@ function renderUsers(rows) {
       <td><span class="mono">${r[0]}</span></td>
       <td style="font-weight:600">${r[1]}</td>
       <td><span class="bdg ${bc}">${bl}</span></td>
+      <td style="font-size:11px;color:var(--ac)">${r[8]||'—'}</td>
       <td style="font-size:11px;color:var(--tx2)">${r[9]||'—'}</td>
       <td>${ct}</td><td>${rt}</td>
       <td style="font-size:12px;color:var(--tx3)">${exp}</td>
