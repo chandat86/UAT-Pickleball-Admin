@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin — Referee Pickleball / DA NANG ®</title>
+<title>Admin v5 — Referee Pickleball / DA NANG ®</title>
 <style>
 /* ═══════════════════════════════════════════════════════
    Pickleball Admin — Mobile-First Professional UI
@@ -821,67 +821,68 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <!-- ── BƯỚC 1: Gán TT vào giải ── -->
       <div id="asgn-step1" style="display:none">
         <div class="card" style="margin-bottom:12px">
-          <div class="ct" style="display:flex;align-items:center;justify-content:space-between">
+          <div class="ct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
             <span>👥 Bước 1 — Chọn Trọng tài cho giải <strong id="asgn-giai-name" style="color:var(--ac)"></strong></span>
-            <button class="btn bp bsm" onclick="saveRefsToTournament()">💾 Lưu danh sách TT</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span id="asgn-sel-count" style="font-size:12px;color:var(--tx3)"></span>
+              <button class="btn bp bsm" onclick="saveRefsToTournament()">💾 Lưu danh sách TT</button>
+            </div>
           </div>
           <p style="font-size:12px;color:var(--tx3);margin:0 0 10px">Tích chọn trọng tài tham gia giải. TT được chọn sẽ thấy giải đấu này khi đăng nhập.</p>
-          <div style="display:flex;gap:8px;margin-bottom:10px">
+
+          <!-- Search + actions -->
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
             <input id="asgn-ref-search" type="text" placeholder="🔍 Tìm tên / mã TT..." oninput="filterAssignRefs()"
-              style="flex:1;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--tx)">
+              style="flex:1;min-width:180px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:7px 11px;font-size:13px;color:var(--tx);outline:none">
             <button class="btn bh bsm" onclick="selectAllRefs(true)">Chọn tất cả</button>
             <button class="btn bh bsm" onclick="selectAllRefs(false)">Bỏ chọn</button>
           </div>
-          <div id="asgn-refs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:280px;overflow-y:auto;padding-right:4px"></div>
+
+          <!-- Ref list — compact table for 100+ refs -->
+          <div id="asgn-refs-list" style="border:1px solid var(--bdr);border-radius:8px;overflow:hidden;max-height:360px;overflow-y:auto"></div>
         </div>
 
         <!-- ── BƯỚC 2: Phân sân từng TT đã gán ── -->
         <div class="card" style="margin-bottom:12px">
           <div class="ct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
             <span>🏟 Bước 2 — Phân sân Trọng tài</span>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <select id="asgn-nd" onchange="filterAssignedRefs()" style="font-size:12px">
-                <option value="">Tất cả nội dung</option>
-              </select>
-            </div>
+            <!-- Nút mở phân sân nhanh -->
+            <button class="btn bh bsm" onclick="toggleQuickAssign()" id="btn-quick-toggle">⚡ Phân sân nhanh</button>
           </div>
           <p style="font-size:12px;color:var(--tx3);margin:0 0 10px">
-            TT đã gán vào giải. Click <strong>Phân sân</strong> để giao sân cụ thể — TT sẽ chỉ thấy trận của giải này tại sân được phân.
+            TT đã gán vào giải. Click <strong style="color:var(--ac)">✏️ Sửa</strong> để giao sân — TT sẽ chỉ thấy trận tại sân được phân.
           </p>
 
-          <!-- Phân sân nhanh theo bảng -->
-          <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:8px;padding:10px 12px;margin-bottom:12px">
-            <div style="font-size:11px;font-weight:700;color:var(--ac);margin-bottom:8px">⚡ PHÂN SÂN NHANH THEO BẢNG — gán sân cho toàn bộ trận trong bảng</div>
-            <!-- Danh sách đã gán (ẩn khi trống) -->
+          <!-- Phân sân nhanh theo bảng — ẨN mặc định -->
+          <div id="quick-assign-panel" style="display:none;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:800;color:var(--ac);margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px">⚡ Phân sân nhanh theo bảng — gán sân cho toàn bộ trận trong bảng</div>
             <div id="bang-court-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-              <div class="fg" style="margin:0;flex:2;min-width:140px">
-                <label style="font-size:11px">Nội dung</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:end">
+              <div class="fg" style="margin:0">
+                <label style="font-size:10px">Nội dung</label>
                 <select id="court-nd-filter" onchange="refreshBangDropdown()" style="font-size:12px"><option value="">Tất cả</option></select>
               </div>
-              <div class="fg" style="margin:0;flex:2;min-width:140px">
-                <label style="font-size:11px">Bảng đấu</label>
-                <select id="court-bang"><option value="">Chọn bảng</option></select>
+              <div class="fg" style="margin:0">
+                <label style="font-size:10px">Bảng đấu</label>
+                <select id="court-bang" style="font-size:12px"><option value="">Chọn bảng</option></select>
               </div>
-              <div class="fg" style="margin:0;flex:2;min-width:140px">
-                <label style="font-size:11px">Sân phân công</label>
-                <select id="court-val"><option value="">— Chọn sân —</option></select>
+              <div class="fg" style="margin:0">
+                <label style="font-size:10px">Sân phân công</label>
+                <select id="court-val" style="font-size:12px"><option value="">— Chọn sân —</option></select>
               </div>
-              <button class="btn bp bsm" onclick="assignCourtToBang()">⚡ Gán sân</button>
-              <button class="btn bh bsm" onclick="resetCourtToBang()" title="Xóa sân đã gán của bảng này">🔄 Reset sân</button>
+              <button class="btn bp bsm" onclick="assignCourtToBang()" style="white-space:nowrap">⚡ Gán sân</button>
+              <button class="btn bh bsm" onclick="resetCourtToBang()" title="Xóa sân đã gán của bảng này">🔄 Reset</button>
             </div>
           </div>
 
-          <!-- Danh sách TT đã được gán giải -->
+          <!-- Danh sách TT đã được gán giải — chỉ 3 cột chính -->
           <div class="tw">
             <table class="tbl">
               <thead><tr>
-                <th style="min-width:130px">Trọng tài</th>
+                <th style="min-width:160px">Trọng tài</th>
                 <th style="min-width:180px">Sân phân công</th>
-                <th style="min-width:150px">Nội dung</th>
-                <th style="min-width:130px">Vòng</th>
                 <th style="text-align:center;min-width:110px">Tình trạng</th>
-                <th style="min-width:160px">Hành động</th>
+                <th style="min-width:140px">Hành động</th>
               </tr></thead>
               <tbody id="asgn-tb"></tbody>
             </table>
@@ -1585,6 +1586,16 @@ function doLogout() {
 // ════════════════════════════════════════════════════════════════
 //  PREFETCH — tải nền 1 lần, sau đó dùng cache
 // ════════════════════════════════════════════════════════════════
+const _cache = {}; // { key: { ts, data } }
+const CACHE_TTL = 60000; // 60s
+
+function cacheGet(key) {
+  const c = _cache[key];
+  if (c && Date.now() - c.ts < CACHE_TTL) return c.data;
+  return null;
+}
+function cacheSet(key, data) { _cache[key] = { ts: Date.now(), data }; }
+
 async function prefetchAll() {
   // Tải song song Tournaments + Matches để dropdown hoạt động ngay
   try {
@@ -1595,8 +1606,9 @@ async function prefetchAll() {
     ]);
     _T = tRes.rows?.slice(1) || [];
     _M = normalizeMatchRows(mRes.rows?.slice(1) || []);
+    cacheSet('tournaments', _T);
+    cacheSet('matches_' + giaiParam, _M);
     populateTournamentDropdowns();
-    // Render tournament cards nếu đang ở trang tournaments
     if (document.getElementById('tv-list')) renderTournCards(_T);
   } catch(e) { /* bỏ qua lỗi prefetch */ }
   loadDash();
@@ -3468,18 +3480,25 @@ let _asgnSelected = new Set(); // Mã TT đã tick chọn cho giải
 
 async function loadAssign() {
   try {
+    // Dùng cache users nếu còn mới, tránh gọi GAS thêm lần
+    let rows = cacheGet('users');
+    if (rows) {
+      _asgnAllRefs = rows.filter(r => String(r[7]||'').toLowerCase() !== 'admin');
+      _U = rows;
+      onAsgnGiaiChange();
+      return;
+    }
     const d = await gGet({ action: 'getUsers', adminCode: CODE });
     if (d.rows) {
-      _asgnAllRefs = d.rows.slice(1).filter(r => String(r[7]||'').toLowerCase() !== 'admin');
+      _asgnAllRefs = (d.rows.slice(1)||[]).filter(r => String(r[7]||'').toLowerCase() !== 'admin');
       _U = d.rows.slice(1);
+      cacheSet('users', _U);
     } else if (_U.length) {
-      // Fallback: dùng _U đã có
       _asgnAllRefs = _U.filter(r => String(r[7]||'').toLowerCase() !== 'admin');
     }
     onAsgnGiaiChange();
   } catch(e) {
     toast('Lỗi tải TT: ' + e.message, 'er');
-    // Fallback: dùng _U đã cache
     if (_U.length) {
       _asgnAllRefs = _U.filter(r => String(r[7]||'').toLowerCase() !== 'admin');
       onAsgnGiaiChange();
@@ -3520,9 +3539,13 @@ function onAsgnGiaiChange() {
   refreshBangDropdown();
 }
 
+let _asgnSearchDbt = null;
 function filterAssignRefs() {
-  const q = document.getElementById('asgn-ref-search').value.toLowerCase();
-  renderAssignRefsList(q);
+  clearTimeout(_asgnSearchDbt);
+  _asgnSearchDbt = setTimeout(() => {
+    const q = document.getElementById('asgn-ref-search').value.toLowerCase();
+    renderAssignRefsList(q);
+  }, 150);
 }
 
 function renderAssignRefsList(q) {
@@ -3533,32 +3556,65 @@ function renderAssignRefsList(q) {
     const cd = String(r[0]||'').toLowerCase();
     return !q || nm.includes(q) || cd.includes(q);
   });
+
+  // Update selection counter
+  const cntEl = document.getElementById('asgn-sel-count');
+  if (cntEl) cntEl.textContent = `${_asgnSelected.size} / ${_asgnAllRefs.length} đã chọn`;
+
   if (!filtered.length) {
-    wrap.innerHTML = '<div style="color:var(--tx3);font-size:13px;padding:12px">Không tìm thấy trọng tài</div>';
+    wrap.innerHTML = '<div style="color:var(--tx3);font-size:13px;padding:12px 16px">Không tìm thấy trọng tài</div>';
     return;
   }
-  wrap.innerHTML = filtered.map(r => {
+
+  // Compact table layout — handles 100+ refs well
+  const rows = filtered.map((r, i) => {
     const code    = String(r[0]||'').trim().toUpperCase();
     const name    = String(r[1]||code);
     const curGiai = String(r[8]||'').trim();
     const courts  = String(r[3]||'').trim();
     const checked = _asgnSelected.has(code);
-    // TT đang có giải khác → cảnh báo
     const otherGiai = curGiai && curGiai !== _asgnGiai;
-    const subtext = otherGiai
-      ? `<span style="color:var(--or);font-size:10px">⚠️ Đang ở ${curGiai}</span>`
-      : courts
-        ? `<span style="color:var(--gn);font-size:10px">🏟 ${courts}</span>`
-        : `<span style="color:var(--tx3);font-size:10px">Chưa phân sân</span>`;
-    return `<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg3);border:1px solid ${checked?'rgba(34,197,94,.4)':'var(--bdr)'};border-radius:8px;padding:8px 10px;cursor:pointer;transition:border-color .15s" onclick="toggleAsgnRef('${code}')">
-      <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleAsgnRef('${code}')" style="margin-top:2px;flex-shrink:0;accent-color:var(--gn)">
-      <div>
-        <div style="font-weight:600;font-size:13px">${name}</div>
-        <div style="font-size:10px;color:var(--tx3);font-family:var(--mo)">${code}</div>
-        ${subtext}
-      </div>
-    </label>`;
+
+    const statusHtml = otherGiai
+      ? `<span style="color:var(--or);font-size:11px">⚠️ ${esc(curGiai)}</span>`
+      : checked
+        ? (courts
+          ? `<span style="color:var(--gn);font-size:11px">🏟 ${esc(courts)}</span>`
+          : `<span style="color:var(--gn);font-size:11px">✓ Trong giải</span>`)
+        : `<span style="color:var(--tx3);font-size:11px">—</span>`;
+
+    const bg = checked ? 'rgba(34,197,94,.05)' : (i%2===0?'var(--bg2)':'var(--bg3)');
+    return `<tr style="background:${bg};cursor:pointer" onclick="toggleAsgnRef('${code}')">
+      <td style="padding:8px 12px;width:36px">
+        <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleAsgnRef('${code}')"
+          style="width:16px;height:16px;accent-color:var(--gn);cursor:pointer">
+      </td>
+      <td style="padding:8px 4px 8px 0;font-weight:600;font-size:13px;color:${checked?'var(--tx)':'var(--tx2)'}">${esc(name)}</td>
+      <td style="padding:8px 12px 8px 0;font-family:var(--mo);font-size:11px;color:var(--tx3)">${esc(code)}</td>
+      <td style="padding:8px 12px 8px 0">${statusHtml}</td>
+    </tr>`;
   }).join('');
+
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse">
+    <thead>
+      <tr style="background:var(--bg4)">
+        <th style="width:36px;padding:7px 12px"></th>
+        <th style="padding:7px 4px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px">Họ tên</th>
+        <th style="padding:7px 12px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px">Mã</th>
+        <th style="padding:7px 12px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px">Trạng thái</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function toggleQuickAssign() {
+  const panel = document.getElementById('quick-assign-panel');
+  const btn   = document.getElementById('btn-quick-toggle');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (btn) btn.textContent = isOpen ? '⚡ Phân sân nhanh' : '✕ Đóng phân sân nhanh';
 }
 
 function toggleAsgnRef(code) {
@@ -3623,12 +3679,12 @@ async function _reloadAssignRefs() {
     if (ld.rows) {
       _asgnAllRefs = (ld.rows.slice(1)||[]).filter(r => String(r[7]||'').toLowerCase() !== 'admin');
       _U = ld.rows.slice(1) || [];
+      cacheSet('users', _U); // refresh cache
     }
     renderAssignRefsList(document.getElementById('asgn-ref-search')?.value?.toLowerCase()||'');
     renderAssignedRefs(_asgnGiaiId, _asgnGiai);
   } catch(e) {
     toast('Lỗi tải lại DS TT: ' + e.message, 'er');
-    // Vẫn render với dữ liệu cũ
     renderAssignedRefs(_asgnGiaiId, _asgnGiai);
   }
 }
@@ -3729,31 +3785,6 @@ function renderAssignedRefs(giaiId, giaiName) {
         </div>
       </td>
 
-      <td>
-        <div id="view-nd-${sid}" style="font-size:12px;color:var(--tx2)">
-          ${noidung ? esc(noidung) : '<span style="color:var(--tx3)">Tất cả</span>'}
-        </div>
-        <div id="edit-nd-${sid}" style="display:none">
-          <select id="sel-nd-${sid}"
-            style="width:100%;background:var(--bg3);border:1px solid var(--bdr);
-              border-radius:6px;font-size:12px;color:var(--tx);padding:5px 6px">
-            ${ndOptHtml}
-          </select>
-        </div>
-      </td>
-
-      <td>
-        <div id="view-round-${sid}" style="font-size:12px;color:var(--tx2)">
-          ${rounds ? esc(rounds) : '<span style="color:var(--tx3)">Tất cả</span>'}
-        </div>
-        <div id="edit-round-${sid}" style="display:none">
-          <input id="inp-round-${sid}" type="text" value="${esc(rounds)}"
-            placeholder="Vòng bảng, Tứ kết..."
-            style="width:100%;background:var(--bg3);border:1px solid var(--bdr);
-              border-radius:6px;font-size:12px;color:var(--tx);padding:5px 7px">
-        </div>
-      </td>
-
       <td style="text-align:center" id="status-${sid}">${statusBadge}</td>
 
       <td>
@@ -3790,7 +3821,8 @@ async function filterAssign() { renderAssignedRefs(_asgnGiaiId, _asgnGiai); }
 //  INLINE EDIT HELPERS
 // ════════════════════════════════════════════════════════════════
 function refEditMode(sid) {
-  ['court','nd','round'].forEach(f => {
+  // v5: only court field (nd/round removed from Bước 2 UI)
+  ['court'].forEach(f => {
     const v = document.getElementById('view-' + f + '-' + sid);
     const e = document.getElementById('edit-' + f + '-' + sid);
     if (v) v.style.display = 'none';
@@ -3805,7 +3837,7 @@ function refEditMode(sid) {
 }
 
 function refCancelMode(sid) {
-  ['court','nd','round'].forEach(f => {
+  ['court'].forEach(f => {
     const v = document.getElementById('view-' + f + '-' + sid);
     const e = document.getElementById('edit-' + f + '-' + sid);
     if (v) v.style.display = '';
@@ -4269,9 +4301,15 @@ function renderResults(rows) {
 async function loadUsers() {
   document.getElementById('u-tb').innerHTML = spin(10);
   try {
-    const d = await gGet({ action:'getUsers', adminCode:CODE });
-    if (!d.ok) { toast('Lỗi: '+d.reason,'er'); return; }
-    _U = d.rows?.slice(1) || [];
+    // Dùng cache nếu còn mới (60s)
+    let rows = cacheGet('users');
+    if (!rows) {
+      const d = await gGet({ action:'getUsers', adminCode:CODE });
+      if (!d.ok) { toast('Lỗi: '+d.reason,'er'); return; }
+      rows = d.rows?.slice(1) || [];
+      cacheSet('users', rows);
+    }
+    _U = rows;
     // Populate giải filter
     const giaiSet=[...new Set(_U.map(r=>String(r[8]||'')).filter(Boolean))];
     document.getElementById('u-giai-f').innerHTML='<option value="">Tất cả giải</option>'+giaiSet.map(g=>`<option>${g}</option>`).join('');
@@ -4359,12 +4397,14 @@ async function saveUser() {
   try{
     const d=await gPost({action:_editU?'updateUser':'addUser',adminCode:CODE,user});
     if(!d.ok)toast('Lỗi: '+d.reason,'er');
+    delete _cache['users']; // invalidate cache
     loadUsers();
   }catch(e){toast('Lỗi kết nối','er');}
 }
 async function delUser(code,name) {
   if(!confirm(`Xóa trọng tài ${name}?`))return;
   _U=_U.filter(r=>String(r[0]||'').toUpperCase()!==code);
+  delete _cache['users']; // invalidate cache
   filterUsers(); toast(`🗑 Đã xóa ${name}`,'in');
   try{await gPost({action:'deleteUser',adminCode:CODE,code});}catch(e){}
 }
