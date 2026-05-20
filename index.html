@@ -693,52 +693,114 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <!-- ══ DASHBOARD ══ -->
     <div class="page on" id="page-dashboard">
       <div class="ph">
-        <div><div class="ptitle">📊 Dashboard <span class="rt-dot"></span></div><div class="psub">Tổng quan giải đấu · cập nhật 30s</div></div>
+        <div>
+          <div class="ptitle">📊 Dashboard <span class="rt-dot"></span></div>
+          <div class="psub" id="dash-filter-label">Tổng quan tất cả giải đấu · tự động cập nhật 30s</div>
+        </div>
         <button class="rfbtn" id="dash-rf" onclick="loadDash()">↻ Làm mới</button>
       </div>
 
-      <!-- Filter: Giải → Nội dung → Bảng -->
-      <div class="fbar">
-        <label>🏆 Giải đấu:</label>
+      <!-- ── Filter phân cấp: Giải → Nội dung → Bảng ── -->
+      <div class="fbar" style="flex-wrap:wrap;gap:8px 12px">
+        <label style="font-weight:700;color:var(--tx2);font-size:12px">🏆 Giải:</label>
         <select id="dash-giai" onchange="onDashGiaiChange()" style="min-width:180px">
           <option value="">Tất cả giải</option>
         </select>
-        <span class="farrow" id="dash-nd-sep" style="display:none">›</span>
-        <label id="dash-nd-lbl" style="display:none">Nội dung:</label>
-        <select id="dash-nd" onchange="onDashNdChange()" style="display:none;min-width:140px">
-          <option value="">Tất cả ND</option>
+        <span id="dash-nd-sep" style="display:none;color:var(--tx3)">›</span>
+        <select id="dash-nd" onchange="onDashNdChange()" style="display:none;min-width:150px">
+          <option value="">Tất cả nội dung</option>
         </select>
-        <span class="farrow" id="dash-bang-sep" style="display:none">›</span>
-        <label id="dash-bang-lbl" style="display:none">Bảng:</label>
-        <select id="dash-bang" onchange="loadDash()" style="display:none;min-width:100px">
+        <span id="dash-bang-sep" style="display:none;color:var(--tx3)">›</span>
+        <select id="dash-bang" onchange="loadDash()" style="display:none;min-width:110px">
           <option value="">Tất cả bảng</option>
         </select>
+        <button id="dash-clear-filter" onclick="clearDashFilter()" style="display:none" class="btn bh bsm">✕ Bỏ lọc</button>
       </div>
 
-      <!-- Stats 5 ô -->
+      <!-- ── Stat cards ── -->
       <div class="stats" style="grid-template-columns:repeat(5,1fr)">
         <div class="sc b" onclick="showStatMo('total')" title="Click xem chi tiết">
-          <div class="slb">Tổng trận <small>↗</small></div><div class="sv b" id="s-total">—</div><div class="ss">lịch đấu</div></div>
+          <div class="slb">Tổng trận <small>↗</small></div>
+          <div class="sv b" id="s-total">—</div>
+          <div class="ss">lịch đấu</div>
+        </div>
         <div class="sc o" onclick="showStatMo('live')" title="Click xem chi tiết">
-          <div class="slb">Đang thi đấu <small>↗</small></div><div class="sv o" id="s-live">—</div><div class="ss">trận thi đấu</div></div>
+          <div class="slb">Đang thi đấu <small>↗</small></div>
+          <div class="sv o" id="s-live">—</div>
+          <div class="ss">trận live</div>
+        </div>
         <div class="sc g" onclick="showStatMo('done')" title="Click xem chi tiết">
-          <div class="slb">Hoàn thành <small>↗</small></div><div class="sv g" id="s-done">—</div><div class="ss">có kết quả</div></div>
+          <div class="slb">Hoàn thành <small>↗</small></div>
+          <div class="sv g" id="s-done">—</div>
+          <div class="ss">có kết quả</div>
+        </div>
         <div class="sc p" onclick="showStatMo('refs')" title="Click xem chi tiết">
-          <div class="slb">Trọng tài <small>↗</small></div><div class="sv p" id="s-refs">—</div><div class="ss">hôm nay: <span id="s-logins" style="color:var(--gn);font-weight:900">0</span></div></div>
+          <div class="slb">Trọng tài <small>↗</small></div>
+          <div class="sv p" id="s-refs">—</div>
+          <div class="ss">hôm nay: <span id="s-logins" style="color:var(--gn);font-weight:900">0</span></div>
+        </div>
         <div class="sc c" onclick="nav('standings')" title="Xem bảng xếp hạng">
-          <div class="slb">BXH <small>↗</small></div><div class="sv c" id="s-nd">—</div><div class="ss">nội dung</div></div>
+          <div class="slb">Nội dung <small>↗</small></div>
+          <div class="sv c" id="s-nd">—</div>
+          <div class="ss">danh mục</div>
+        </div>
       </div>
 
-      <div class="dgrid">
-        <div class="card"><div class="ct">🔴 Đang thi đấu</div><div id="live-wrap"><div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div></div></div>
-        <div class="card"><div class="ct">📈 Tiến độ theo nội dung</div><div id="cat-wrap"><div class="empty"><div class="ei">⏳</div><p>Đang tải...</p></div></div></div>
+      <!-- ── Khu vực nội dung chính: thay đổi theo filter ── -->
+
+      <!-- A. Tất cả giải: Live + Tiến độ -->
+      <div id="dash-view-all">
+        <div class="dgrid">
+          <div class="card">
+            <div class="ct" style="display:flex;justify-content:space-between;align-items:center">
+              <span>🔴 Đang thi đấu</span>
+              <span id="dash-live-count" style="font-size:11px;color:var(--or)"></span>
+            </div>
+            <div id="live-wrap"><div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div></div>
+          </div>
+          <div class="card">
+            <div class="ct">📈 Tiến độ theo nội dung</div>
+            <div id="cat-wrap"><div class="empty"><div class="ei">⏳</div><p>Đang tải...</p></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct" style="display:flex;justify-content:space-between;align-items:center">
+            <span>🕐 Kết quả gần nhất</span>
+            <button class="btn bh bsm" onclick="nav('results')">Xem tất cả ↗</button>
+          </div>
+          <div id="rec-wrap"><div class="empty"><div class="ei">🏆</div><p>Chưa có</p></div></div>
+        </div>
       </div>
-      <!-- Bảng trận đấu chi tiết (hiện khi lọc theo ND/Bảng) -->
-      <div class="card" id="dash-matches-card" style="display:none">
-        <div class="ct" id="dash-matches-title">📋 Danh sách trận</div>
-        <div id="dash-matches-wrap"></div>
+
+      <!-- B. Đã chọn giải/ND/Bảng: Bảng trận chi tiết -->
+      <div id="dash-view-filter" style="display:none">
+        <!-- Live row (hiện khi có trận đang đánh trong filter) -->
+        <div class="card" id="dash-live-card" style="display:none;margin-bottom:0">
+          <div class="ct">🔴 Đang thi đấu <span id="dash-live-badge" style="font-size:11px;color:var(--or);font-weight:600"></span></div>
+          <div id="dash-live-wrap2"></div>
+        </div>
+
+        <!-- Bảng trận đấu tổng hợp -->
+        <div class="card" id="dash-matches-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <div class="ct" id="dash-matches-title" style="margin:0">📋 Danh sách trận</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span id="dash-match-summary" style="font-size:11px;color:var(--tx3)"></span>
+              <button class="btn bh bsm" onclick="loadDash()">↻ Làm mới</button>
+            </div>
+          </div>
+          <div id="dash-matches-wrap"><div class="empty"><span class="spin"></span></div></div>
+        </div>
+
+        <!-- Kết quả filter -->
+        <div class="card">
+          <div class="ct" style="display:flex;justify-content:space-between;align-items:center">
+            <span>🏆 Kết quả <span id="dash-rec-badge" style="font-size:11px;color:var(--gn);font-weight:600"></span></span>
+            <button class="btn bh bsm" onclick="nav('results')">Xem đầy đủ ↗</button>
+          </div>
+          <div id="rec-wrap2"><div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả</p></div></div>
+        </div>
       </div>
-      <div class="card"><div class="ct">🕐 Kết quả gần nhất</div><div id="rec-wrap"><div class="empty"><div class="ei">🏆</div><p>Chưa có</p></div></div></div>
     </div>
 
     <!-- ══ TOURNAMENTS ══ -->
@@ -804,16 +866,16 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <button class="rfbtn" onclick="loadStandings()">↻ Làm mới</button>
       </div>
       <!-- Bộ lọc phân cấp -->
-      <div class="fbar">
+      <div class="fbar" style="flex-wrap:wrap">
         <label>🏆</label>
-        <select id="bxh-giai" onchange="onBxhGiaiChange()"><option value="">Chọn giải</option></select>
+        <select id="bxh-giai" onchange="onBxhGiaiChange()" style="min-width:160px"><option value="">Tất cả giải</option></select>
         <span class="farrow">›</span>
-        <label>Nội dung:</label>
-        <select id="bxh-nd" onchange="onBxhNdChange()"><option value="">Chọn nội dung</option></select>
+        <select id="bxh-nd" onchange="onBxhNdChange()" style="min-width:140px"><option value="">Tất cả nội dung</option></select>
         <span class="farrow">›</span>
-        <label>Bảng:</label>
-        <select id="bxh-bang" onchange="loadStandings()"><option value="">Tất cả bảng</option></select>
+        <select id="bxh-bang" onchange="loadStandings()" style="min-width:110px"><option value="">Tất cả bảng</option></select>
+        <button class="rfbtn" onclick="loadStandings()" style="margin-left:auto">↻ Làm mới</button>
       </div>
+      <div id="bxh-label" style="font-size:12px;color:var(--tx3);padding:4px 0 8px;display:none"></div>
       <div id="bxh-wrap"><div class="empty"><div class="ei">📈</div><p>Chọn giải và nội dung để xem BXH</p></div></div>
     </div>
 
@@ -928,8 +990,12 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <!-- ══ LỊCH THI ĐẤU ══ -->
     <div class="page" id="page-matches">
       <div class="ph">
-        <div><div class="ptitle">📋 Lịch thi đấu</div><div class="psub">Quản lý trận đấu · sửa tỉ số trực tiếp</div></div>
+        <div>
+          <div class="ptitle">📋 Lịch thi đấu</div>
+          <div class="psub">Quản lý trận đấu · <span id="m-count" style="color:var(--ac);font-weight:700">—</span> trận</div>
+        </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="rfbtn" onclick="loadMatches()">↻ Làm mới</button>
           <button class="btn bh" onclick="openImportMo()">📥 Import CSV</button>
           <button class="btn bh" onclick="openBatchMo()">⚡ Round-Robin</button>
           <button class="btn bp" onclick="openMatchMo()">＋ Thêm trận</button>
@@ -965,14 +1031,17 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <!-- ══ KẾT QUẢ ══ -->
     <div class="page" id="page-results">
       <div class="ph">
-        <div><div class="ptitle">🎯 Kết quả thi đấu</div><div class="psub">Các trận đã hoàn thành</div></div>
+        <div><div class="ptitle">🎯 Kết quả thi đấu</div><div class="psub">Các trận đã hoàn thành · <span id="r-count" style="color:var(--gn);font-weight:700">—</span> kết quả</div></div>
         <button class="rfbtn" onclick="loadResults()">↻ Làm mới</button>
       </div>
-      <div class="fbar">
+      <div class="fbar" style="flex-wrap:wrap">
         <label>🏆</label>
-        <select id="r-giai" onchange="onRGiaiChange()"><option value="">Chọn giải</option></select>
+        <select id="r-giai" onchange="onRGiaiChange()" style="min-width:160px"><option value="">Tất cả giải</option></select>
         <span class="farrow">›</span>
-        <select id="r-nd" onchange="filterResults()"><option value="">Tất cả nội dung</option></select>
+        <select id="r-nd" onchange="onRNdChange()" style="min-width:130px"><option value="">Tất cả nội dung</option></select>
+        <span class="farrow">›</span>
+        <select id="r-bang" onchange="filterResults()" style="min-width:100px"><option value="">Tất cả bảng</option></select>
+        <input class="si" id="r-q" placeholder="🔍 Tìm đội..." oninput="dbt(filterResults)" style="flex:1;min-width:100px">
       </div>
       <div class="tw">
         <table class="tbl">
@@ -1897,30 +1966,11 @@ async function loadDash() {
       _T = d.tournaments.map(t => [t.id,t.name,t.venue,t.courts,t.startDate,t.endDate,t.status,t.note,t.refs||[]]);
       populateTournamentDropdowns();
     }
-    // Populate Nội dung dropdown (chỉ hiện khi đã chọn giải)
+    // ── Populate filter dropdowns Nội dung / Bảng ──
     const giaiSelectedId = document.getElementById('dash-giai').value;
-    const ndSel   = document.getElementById('dash-nd');
-    const bangSel = document.getElementById('dash-bang');
-    const ndSep   = document.getElementById('dash-nd-sep');
-    const bangSep = document.getElementById('dash-bang-sep');
-    const ndLbl   = document.getElementById('dash-nd-lbl');
-    const bangLbl = document.getElementById('dash-bang-lbl');
-    if (giaiSelectedId && ndSel) {
-      const nds = d.noidungs || [];
-      const curNd = ndSel.value;
-      ndSel.innerHTML = '<option value="">Tất cả ND</option>' + nds.map(n=>`<option value="${esc(n)}"${n===curNd?' selected':''}>${esc(n)}</option>`).join('');
-      [ndSel, ndSep, ndLbl].forEach(el => el && (el.style.display = ''));
-      // Populate Bảng dropdown
-      const bangs = d.bangs || [];
-      const curBang = bangSel?.value||'';
-      if (bangSel) {
-        bangSel.innerHTML = '<option value="">Tất cả bảng</option>' + bangs.map(b=>`<option value="${esc(b)}"${b===curBang?' selected':''}>${esc(b)}</option>`).join('');
-        const showBang = !!ndSel.value;
-        [bangSel, bangSep, bangLbl].forEach(el => el && (el.style.display = showBang ? '' : 'none'));
-      }
-    } else {
-      [ndSel, ndSep, ndLbl, bangSel, bangSep, bangLbl].forEach(el => el && (el.style.display = 'none'));
-    }
+    const filterNdVal    = document.getElementById('dash-nd')?.value   || '';
+    const filterBangVal  = document.getElementById('dash-bang')?.value || '';
+    _dashPopulateFilters(d, giaiSelectedId, filterNdVal, filterBangVal);
     const s = d.summary || {};
     // Cập nhật _dK/_dkScores từ recentResults để renderBangList đồng bộ
     try {
@@ -1987,89 +2037,79 @@ async function loadDash() {
           <small style="color:var(--tx3);font-size:11px">${(c.bangs||[]).join(', ')}</small>
         </div>`).join('');
 
-    // Recent results
-    const rw = document.getElementById('rec-wrap');
-    const rec = d.recentResults || [];
-    rw.innerHTML = !rec.length
-      ? '<div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả</p></div>'
-      : `<div class="tw"><table class="tbl"><thead><tr>
-          <th style="white-space:nowrap">Thời gian</th><th>Giải</th>
-          <th style="white-space:nowrap">ND · Mã</th><th>Đội A</th>
-          <th style="text-align:center">Tỉ số</th>
-          <th>Đội B</th><th>🏆 Thắng</th>
-        </tr></thead><tbody>${
-          rec.map(r => {
-            const wA = r.winner===r.teamA, wB = r.winner===r.teamB;
-            return `<tr>
-              <td style="font-size:11px;color:var(--tx3);white-space:nowrap">${r.time||'—'}</td>
-              <td style="font-size:11px;color:var(--ac);white-space:nowrap">${r.giai||'—'}</td>
-              <td><span class="mono">${r.code||'—'}</span><br><small style="color:var(--tx3)">${r.nd||''} · ${r.bang||''}</small></td>
-              <td style="font-weight:${wA?700:400};color:${wA?'var(--gn)':'var(--tx)'}">${r.teamA||'—'}</td>
-              <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:14px;color:var(--gn)">${r.scoreA}–${r.scoreB}</td>
-              <td style="font-weight:${wB?700:400};color:${wB?'var(--gn)':'var(--tx)'}">${r.teamB||'—'}</td>
-              <td style="color:var(--gn);font-weight:700;white-space:nowrap">🏆 ${r.winner||'—'}</td>
-            </tr>`;
-          }).join('')
-        }</tbody></table></div>`;
-
-    // Bảng trận chi tiết khi lọc theo ND/Bảng
-    const mCard  = document.getElementById('dash-matches-card');
-    const mWrap  = document.getElementById('dash-matches-wrap');
-    const mTitle = document.getElementById('dash-matches-title');
+    // ── Render 2 views tùy filter ──
     const filterNd   = document.getElementById('dash-nd')?.value   || '';
     const filterBang = document.getElementById('dash-bang')?.value || '';
-    if (mCard && (filterNd || filterBang)) {
-      mCard.style.display = '';
-      const giaiLbl = d.filterGiai || '';
-      const ndLbl   = filterNd || 'Tất cả ND';
-      const bangLbl = filterBang || 'Tất cả bảng';
-      if (mTitle) mTitle.textContent = `📋 Trận đấu — ${giaiLbl}${filterNd?' › '+filterNd:''}${filterBang?' › '+filterBang:''}`;
-      // Lấy matches từ _M đã cache (đã load khi init)
-      const giaiSelectedId = document.getElementById('dash-giai').value;
-      const giaiN = giaiSelectedId ? ((_T.find(t=>String(t[0]||'')===giaiSelectedId)||[])[1]||giaiSelectedId) : '';
+    const filterGiaiId = document.getElementById('dash-giai').value || '';
+    const hasFilter = filterGiaiId || filterNd || filterBang;
+
+    if (!hasFilter) {
+      // VIEW ALL: Live + Tiến độ + Kết quả gần nhất
+      document.getElementById('dash-view-all').style.display    = '';
+      document.getElementById('dash-view-filter').style.display = 'none';
+      // Recent results
+      const rec = d.recentResults || [];
+      const rw  = document.getElementById('rec-wrap');
+      rw.innerHTML = !rec.length
+        ? '<div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả</p></div>'
+        : _renderRecentTable(rec);
+    } else {
+      // VIEW FILTER: bảng trận + kết quả
+      document.getElementById('dash-view-all').style.display    = 'none';
+      document.getElementById('dash-view-filter').style.display = '';
+      // Title
+      const giaiN2 = filterGiaiId ? ((_T.find(t=>String(t[0]||'')===filterGiaiId)||[])[1]||filterGiaiId) : '';
+      const label  = [giaiN2, filterNd, filterBang].filter(Boolean).join(' › ');
+      const mTitle = document.getElementById('dash-matches-title');
+      if (mTitle) mTitle.textContent = `📋 Trận đấu — ${label||'Tất cả'}`;
+      document.getElementById('dash-filter-label').textContent = label ? `Đang xem: ${label}` : 'Tổng quan tất cả';
+      // Lấy matches từ _M
       const filteredM = _M.filter(m => {
-        if (giaiN && String(m[0]||'') !== giaiN) return false;
+        if (giaiN2 && String(m[0]||'') !== giaiN2) return false;
         if (filterNd   && String(m[1]||'') !== filterNd)   return false;
         if (filterBang && String(m[2]||'') !== filterBang) return false;
         return true;
+      }).sort((a,b) => String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true})
+             || String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true}));
+      const doneM = filteredM.filter(m=>isMatchDone(m)).length;
+      const liveM = filteredM.filter(m=>!isMatchDone(m)&&_lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
+      const pendM = filteredM.length - doneM - liveM;
+      document.getElementById('dash-match-summary').textContent =
+        `${filteredM.length} trận · ✅${doneM} · ⚡${liveM} · ⬜${pendM}`;
+      // Live trong filter
+      const liveInFilter = filteredM.filter(m=>{
+        if (isMatchDone(m)) return false;
+        return _lK.has(`${m[1]}|${m[2]}|${m[3]}`);
       });
-      filteredM.sort((a,b) => String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true}) || String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true}));
-      if (!filteredM.length) {
-        mWrap.innerHTML = '<div class="empty"><div class="ei">📋</div><p>Không có trận nào</p></div>';
+      const liveCard2 = document.getElementById('dash-live-card');
+      const liveWrap2 = document.getElementById('dash-live-wrap2');
+      if (liveInFilter.length) {
+        liveCard2.style.display = '';
+        document.getElementById('dash-live-badge').textContent = `${liveInFilter.length} trận`;
+        liveWrap2.innerHTML = _renderLiveTable(liveInFilter);
       } else {
-        const rows = filteredM.map(m => {
-          const done = isMatchDone(m);
-          const lk   = `${m[1]}|${m[2]}|${m[3]}`;
-          const live = !done && _lK.has(lk);
-          let sA, sB;
-          if (live && _liveScores[lk]) { sA = _liveScores[lk].scoreA; sB = _liveScores[lk].scoreB; }
-          else { const fs = getFinalScore(m); sA = fs?.scoreA??null; sB = fs?.scoreB??null; }
-          const scoreColor = done ? 'var(--gn)' : live ? 'var(--or)' : 'var(--tx3)';
-          const sAcell = sA!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${scoreColor};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
-          const sBcell = sB!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${scoreColor};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
-          const status = done ? '<span class="bdg bo" style="font-size:10px">✅ Xong</span>'
-            : live ? '<span class="bdg bw" style="font-size:10px;animation:pulse 1s infinite">⚡ Live</span>'
-            : '<span class="bdg bg0" style="font-size:10px">⬜ Chưa</span>';
-          const rowStyle = done ? 'background:rgba(34,197,94,.04)' : live ? 'background:rgba(245,158,11,.06);border-left:2px solid var(--or)' : '';
-          return `<tr${rowStyle?' style="'+rowStyle+'"':''}>
-            <td style="font-family:var(--mo);color:var(--ac);font-weight:700;white-space:nowrap">${m[2]||''} · ${m[3]||''}</td>
-            <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
-            <td style="text-align:center">${sAcell}</td>
-            <td style="text-align:center">${sBcell}</td>
-            <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
-            <td style="font-size:11px;color:var(--ac2)">${m[8]||'—'}</td>
-            <td>${status}</td>
-          </tr>`;
-        }).join('');
-        mWrap.innerHTML = `<div class="tw"><table class="tbl" style="font-size:12px">
-          <thead><tr>
-            <th>Bảng · Mã</th><th>Đội A</th>
-            <th style="text-align:center">A</th><th style="text-align:center">B</th>
-            <th>Đội B</th><th>Sân</th><th>Trạng thái</th>
-          </tr></thead><tbody>${rows}</tbody></table></div>`;
+        liveCard2.style.display = 'none';
       }
-    } else if (mCard) {
-      mCard.style.display = 'none';
+      // Bảng trận đầy đủ
+      const mWrap = document.getElementById('dash-matches-wrap');
+      mWrap.innerHTML = !filteredM.length
+        ? '<div class="empty"><div class="ei">📋</div><p>Không có trận nào trong bộ lọc này</p></div>'
+        : _renderMatchTable(filteredM);
+      // Kết quả trong filter (từ _dkScores)
+      const recInFilter = filteredM
+        .filter(m => isMatchDone(m))
+        .map(m => {
+          const fs = getFinalScore(m);
+          return { code:m[3], nd:m[1], bang:m[2], giai:m[0],
+                   teamA:fs?.teamA||m[4]||'', teamB:fs?.teamB||m[7]||'',
+                   scoreA:fs?.scoreA??'—', scoreB:fs?.scoreB??'—', winner:fs?.winner||'' };
+        }).reverse();
+      const rw2 = document.getElementById('rec-wrap2');
+      const rcBadge = document.getElementById('dash-rec-badge');
+      if(rcBadge) rcBadge.textContent = recInFilter.length ? `(${recInFilter.length})` : '';
+      rw2.innerHTML = !recInFilter.length
+        ? '<div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả trong bộ lọc này</p></div>'
+        : _renderRecentFromLocal(recInFilter);
     }
 
   } catch(e) {
@@ -2081,22 +2121,172 @@ async function loadDash() {
   finally { if(btn) btn.textContent = '↻ Làm mới'; }
 }
 
+// ══════════════════════════════════════════════════════
+//  DASHBOARD HELPERS
+// ══════════════════════════════════════════════════════
+
+// Populate ND / Bảng dropdown sau khi nhận data từ GAS
+function _dashPopulateFilters(d, giaiId, curNd, curBang) {
+  const ndSel   = document.getElementById('dash-nd');
+  const bangSel = document.getElementById('dash-bang');
+  const ndSep   = document.getElementById('dash-nd-sep');
+  const bangSep = document.getElementById('dash-bang-sep');
+  const clearBtn = document.getElementById('dash-clear-filter');
+
+  const hasGiai = !!giaiId;
+
+  if (hasGiai && ndSel) {
+    const nds = d.noidungs || [];
+    ndSel.innerHTML = '<option value="">Tất cả nội dung</option>' +
+      nds.map(n=>`<option value="${esc(n)}"${n===curNd?' selected':''}>${esc(n)}</option>`).join('');
+    ndSel.style.display = ''; ndSep.style.display = '';
+
+    // Bảng: chỉ hiện nếu đã chọn ND
+    if (curNd && bangSel) {
+      const bangs = d.bangs || [];
+      bangSel.innerHTML = '<option value="">Tất cả bảng</option>' +
+        bangs.map(b=>`<option value="${esc(b)}"${b===curBang?' selected':''}>${esc(b)}</option>`).join('');
+      bangSel.style.display = ''; bangSep.style.display = '';
+    } else {
+      if(bangSel) { bangSel.style.display='none'; bangSel.value=''; }
+      if(bangSep) bangSep.style.display='none';
+    }
+  } else {
+    [ndSel, ndSep, bangSel, bangSep].forEach(el => el && (el.style.display = 'none'));
+    if(ndSel)   ndSel.value='';
+    if(bangSel) bangSel.value='';
+  }
+
+  // Nút bỏ lọc
+  if(clearBtn) clearBtn.style.display = (hasGiai || curNd || curBang) ? '' : 'none';
+}
+
+function clearDashFilter() {
+  const g = document.getElementById('dash-giai');
+  const n = document.getElementById('dash-nd');
+  const b = document.getElementById('dash-bang');
+  if(g) g.value=''; if(n) { n.value=''; n.style.display='none'; }
+  if(b) { b.value=''; b.style.display='none'; }
+  ['dash-nd-sep','dash-bang-sep'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const cb = document.getElementById('dash-clear-filter'); if(cb) cb.style.display='none';
+  document.getElementById('dash-filter-label').textContent='Tổng quan tất cả giải đấu · tự động cập nhật 30s';
+  loadDash();
+}
+
+// Render bảng live mini
+function _renderLiveTable(matches) {
+  return `<div class="tw" style="margin-top:8px"><table class="tbl" style="font-size:12px"><thead><tr>
+    <th>Bảng·Mã</th><th>Đội A</th><th style="text-align:center">A</th>
+    <th style="text-align:center">B</th><th>Đội B</th><th>Game</th><th>Sân</th>
+  </tr></thead><tbody>${matches.map(m=>{
+    const lk=`${m[1]}|${m[2]}|${m[3]}`;
+    const ls=_liveScores[lk]||{};
+    return `<tr style="background:rgba(245,158,11,.06);border-left:2px solid var(--or)">
+      <td><span class="mono" style="color:var(--ac)">${m[2]||''}</span><span style="color:var(--tx3)">·${m[3]||''}</span></td>
+      <td style="font-weight:600">${m[4]||'TBD'}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;color:var(--or);font-size:14px">${ls.scoreA??'—'}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;color:var(--or);font-size:14px">${ls.scoreB??'—'}</td>
+      <td style="font-weight:600">${m[7]||'TBD'}</td>
+      <td><span class="bdg bw" style="font-size:10px">${ls.game||'G1'}</span></td>
+      <td style="font-size:11px;color:var(--ac2)">${m[8]||'—'}</td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+// Render bảng trận đầy đủ (đã lọc)
+function _renderMatchTable(matches) {
+  // Group by bang để dễ đọc
+  const byBang = {};
+  matches.forEach(m => {
+    const bg = m[2]||'—';
+    if (!byBang[bg]) byBang[bg] = [];
+    byBang[bg].push(m);
+  });
+  const sections = Object.keys(byBang).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(bang => {
+    const ms = byBang[bang];
+    const dC=ms.filter(m=>isMatchDone(m)).length, lC=ms.filter(m=>!isMatchDone(m)&&_lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
+    const rows = ms.map(m=>{
+      const done=isMatchDone(m), lk=`${m[1]}|${m[2]}|${m[3]}`, live=!done&&_lK.has(lk);
+      let sA,sB;
+      if(live&&_liveScores[lk]){sA=_liveScores[lk].scoreA;sB=_liveScores[lk].scoreB;}
+      else{const fs=getFinalScore(m);sA=fs?.scoreA??null;sB=fs?.scoreB??null;}
+      const sc=done?'var(--gn)':live?'var(--or)':'var(--tx3)';
+      const sAc=sA!==null?`<b style="font-family:var(--mo);color:${sc};font-size:13px">${sA}</b>`:'<span style="color:var(--tx3)">—</span>';
+      const sBc=sB!==null?`<b style="font-family:var(--mo);color:${sc};font-size:13px">${sB}</b>`:'<span style="color:var(--tx3)">—</span>';
+      const st=done?'<span class="bdg bo" style="font-size:10px">✅ Xong</span>':live?'<span class="bdg bw" style="font-size:10px">⚡Live</span>':'<span style="color:var(--tx3);font-size:11px">⬜ Chưa</span>';
+      const rs=done?'background:rgba(34,197,94,.04)':live?'background:rgba(245,158,11,.06);border-left:2px solid var(--or)':'';
+      return `<tr${rs?` style="${rs}"`:''}><td style="font-family:var(--mo);color:var(--ac);font-weight:700">${m[3]||''}</td>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
+        <td style="text-align:center">${sAc}</td><td style="text-align:center">${sBc}</td>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
+        <td style="font-size:11px;color:var(--ac2)">${m[8]||'—'}</td><td>${st}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg4);border-radius:8px 8px 0 0;border:1px solid var(--bdr);border-bottom:none">
+        <span style="font-weight:800;color:var(--ac2)">${bang}</span>
+        <span style="font-size:11px;color:var(--tx3)">${ms.length} trận</span>
+        ${lC?`<span class="bdg bw" style="font-size:10px">⚡${lC}</span>`:''}
+        ${dC?`<span class="bdg bo" style="font-size:10px">✅${dC}</span>`:''}
+        <span class="bdg bg0" style="font-size:10px">⬜${ms.length-dC-lC}</span>
+      </div>
+      <div class="tw" style="border-radius:0 0 8px 8px;border:1px solid var(--bdr)">
+        <table class="tbl" style="font-size:12px">
+          <thead><tr><th>Mã</th><th>Đội A</th><th style="text-align:center">A</th><th style="text-align:center">B</th><th>Đội B</th><th>Sân</th><th>Trạng thái</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+  return sections.join('');
+}
+
+// Render recent từ GAS data
+function _renderRecentTable(rec) {
+  return `<div class="tw"><table class="tbl" style="font-size:12px"><thead><tr>
+    <th>Giờ</th><th>Giải · ND</th><th>Mã</th><th>Đội A</th>
+    <th style="text-align:center">Tỉ số</th><th>Đội B</th><th>🏆 Thắng</th>
+  </tr></thead><tbody>${rec.slice(0,15).map(r=>{
+    const wA=r.winner===r.teamA,wB=r.winner===r.teamB;
+    return `<tr><td style="font-size:11px;color:var(--tx3);white-space:nowrap">${(r.time||'').split(' ').pop()||'—'}</td>
+      <td style="font-size:11px"><div style="color:var(--ac);font-weight:600">${r.giai||'—'}</div><small style="color:var(--tx3)">${r.nd||''} · ${r.bang||''}</small></td>
+      <td><span class="mono">${r.code||'—'}</span></td>
+      <td style="font-weight:${wA?700:400};color:${wA?'var(--gn)':'var(--tx)'};max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.teamA||'—'}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:14px;color:var(--gn)">${r.scoreA}–${r.scoreB}</td>
+      <td style="font-weight:${wB?700:400};color:${wB?'var(--gn)':'var(--tx)'};max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.teamB||'—'}</td>
+      <td style="color:var(--gn);font-weight:700;white-space:nowrap">🏆 ${r.winner||'—'}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+// Render recent từ local _dkScores
+function _renderRecentFromLocal(recs) {
+  return `<div class="tw"><table class="tbl" style="font-size:12px"><thead><tr>
+    <th>ND · Bảng · Mã</th><th>Đội A</th>
+    <th style="text-align:center">Tỉ số</th><th>Đội B</th><th>🏆 Thắng</th>
+  </tr></thead><tbody>${recs.slice(0,20).map(r=>{
+    const wA=r.winner===r.teamA,wB=r.winner===r.teamB;
+    return `<tr>
+      <td><span class="mono" style="color:var(--ac)">${r.code||'—'}</span><br>
+        <small style="color:var(--tx3)">${r.nd||''} · ${r.bang||''}</small></td>
+      <td style="font-weight:${wA?700:400};color:${wA?'var(--gn)':'var(--tx)'}">${r.teamA||'—'}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:14px;color:var(--gn)">${r.scoreA}–${r.scoreB}</td>
+      <td style="font-weight:${wB?700:400};color:${wB?'var(--gn)':'var(--tx)'}">${r.teamB||'—'}</td>
+      <td style="color:var(--gn);font-weight:700;white-space:nowrap">🏆 ${r.winner||'—'}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
 // ── Dashboard cascade filter handlers ──
 function onDashGiaiChange() {
-  // Reset ND và Bang khi đổi giải
-  const ndSel  = document.getElementById('dash-nd');
+  const ndSel = document.getElementById('dash-nd');
   const bangSel = document.getElementById('dash-bang');
-  if (ndSel)   { ndSel.value = ''; ndSel.innerHTML = '<option value="">Tất cả ND</option>'; }
-  if (bangSel) { bangSel.value = ''; bangSel.innerHTML = '<option value="">Tất cả bảng</option>'; }
-  // Ẩn ND/Bang trước khi load (sẽ hiện lại sau loadDash nếu có data)
-  ['dash-nd','dash-nd-sep','dash-nd-lbl','dash-bang','dash-bang-sep','dash-bang-lbl']
-    .forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  if(ndSel)  { ndSel.value=''; ndSel.style.display='none'; }
+  if(bangSel){ bangSel.value=''; bangSel.style.display='none'; }
+  ['dash-nd-sep','dash-bang-sep'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.getElementById('dash-filter-label').textContent='Tổng quan tất cả giải đấu · tự động cập nhật 30s';
   loadDash();
 }
 function onDashNdChange() {
-  // Reset Bảng khi đổi ND
   const bangSel = document.getElementById('dash-bang');
-  if (bangSel) { bangSel.value = ''; }
+  if(bangSel){ bangSel.value=''; bangSel.style.display='none'; }
   loadDash();
 }
 
@@ -4473,6 +4663,8 @@ function filterMatches() {
     if (q) return [r[0],r[1],r[2],r[3],r[4],r[7],r[8]].some(v=>String(v||'').toLowerCase().includes(q));
     return true;
   });
+  const cntEl = document.getElementById('m-count');
+  if(cntEl) cntEl.textContent = rows.length;
   renderMatches(rows);
 }
 function renderMatches(rows) {
@@ -4701,20 +4893,66 @@ async function saveRR() {
 // ════════════════════════════════════════════════════════════════
 async function loadResults() {
   document.getElementById('r-tb').innerHTML = spin(11);
-  const giai = document.getElementById('r-giai').value;
+  const giaiId = document.getElementById('r-giai').value;
+  const giaiN  = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
   try {
-    const d = await gGet({ action:'results', giai });
+    const d = await gGet({ action:'results', giai: giaiN || giaiId });
     _R = d.rows?.slice(1) || [];
-    // Populate nội dung dropdown
-    const nds=[...new Set(_R.map(r=>String(r[2]||'')).filter(Boolean))];
-    document.getElementById('r-nd').innerHTML='<option value="">Tất cả nội dung</option>'+nds.map(n=>`<option>${n}</option>`).join('');
+    buildDkFromResults(_R);
+    // Populate ND
+    const nds  = [...new Set(_R.map(r=>String(r[2]||'')).filter(Boolean))].sort();
+    const curNd = document.getElementById('r-nd').value;
+    document.getElementById('r-nd').innerHTML = '<option value="">Tất cả nội dung</option>' +
+      nds.map(n=>`<option value="${esc(n)}"${n===curNd?' selected':''}>${esc(n)}</option>`).join('');
+    // Populate Bảng
+    const bgSel = document.getElementById('r-bang');
+    if (bgSel) {
+      const bangs = [...new Set(_R.map(r=>String(r[3]||'')).filter(Boolean))].sort();
+      const curBg = bgSel.value;
+      bgSel.innerHTML = '<option value="">Tất cả bảng</option>' +
+        bangs.map(b=>`<option value="${esc(b)}"${b===curBg?' selected':''}>${esc(b)}</option>`).join('');
+    }
     filterResults();
   } catch(e) { toast('Lỗi kết nối','er'); }
 }
-function onRGiaiChange() { loadResults(); }
+function onRGiaiChange() {
+  // Reset ND và Bảng khi đổi giải
+  const ndSel = document.getElementById('r-nd');
+  const bgSel = document.getElementById('r-bang');
+  if(ndSel)  ndSel.innerHTML = '<option value="">Tất cả nội dung</option>';
+  if(bgSel)  bgSel.innerHTML = '<option value="">Tất cả bảng</option>';
+  loadResults();
+}
+function onRNdChange() {
+  // Cập nhật bảng dropdown
+  const giai = document.getElementById('r-giai').value;
+  const nd   = document.getElementById('r-nd').value;
+  const bgSel = document.getElementById('r-bang');
+  if (bgSel) {
+    const giaiN = giai ? ((_T.find(t=>String(t[0]||'')===giai)||[])[1]||giai) : '';
+    const bangs = [...new Set(_R.filter(r =>
+      (!giaiN || String(r[1]||'')===giaiN) && (!nd || String(r[2]||'')===nd)
+    ).map(r=>String(r[3]||'')).filter(Boolean))].sort();
+    bgSel.innerHTML = '<option value="">Tất cả bảng</option>' +
+      bangs.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
+  }
+  filterResults();
+}
 function filterResults() {
-  const nd = document.getElementById('r-nd').value;
-  renderResults([..._R].reverse().filter(r => !nd || String(r[2]||'')===nd));
+  const nd   = document.getElementById('r-nd').value;
+  const bang = document.getElementById('r-bang').value;
+  const q    = (document.getElementById('r-q')?.value||'').toLowerCase().trim();
+  const rows = [..._R].reverse().filter(r => {
+    if (nd   && String(r[2]||'') !== nd)   return false;
+    if (bang && String(r[3]||'') !== bang) return false;
+    if (q && !String(r[5]||'').toLowerCase().includes(q)
+          && !String(r[6]||'').toLowerCase().includes(q)
+          && !String(r[4]||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const countEl = document.getElementById('r-count');
+  if(countEl) countEl.textContent = rows.length;
+  renderResults(rows);
 }
 function renderResults(rows) {
   const tb = document.getElementById('r-tb');
