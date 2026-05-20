@@ -3477,6 +3477,7 @@ let _asgnGiai = '';        // Giải đang phân công (tên)
 let _asgnGiaiId = '';      // Mã giải đang phân công
 let _asgnAllRefs = [];     // Toàn bộ TT (không phân admin)
 let _asgnSelected = new Set(); // Mã TT đã tick chọn cho giải
+let _bangCourtMap = {};    // bang → court đã gán nhanh
 
 async function loadAssign() {
   try {
@@ -3521,11 +3522,6 @@ function onAsgnGiaiChange() {
 
   document.getElementById('asgn-giai-name').textContent = name;
 
-  // Nội dung filter
-  const nds = getNoidungs(id);
-  const ndSel = document.getElementById('asgn-nd');
-  if (ndSel) ndSel.innerHTML = '<option value="">Tất cả nội dung</option>' + nds.map(n=>`<option>${n}</option>`).join('');
-
   // Tick sẵn TT đang có giải này
   _asgnSelected = new Set(
     _asgnAllRefs
@@ -3535,7 +3531,6 @@ function onAsgnGiaiChange() {
 
   renderAssignRefsList('');
   renderAssignedRefs(id, name);
-  // Cập nhật bảng + sân dropdown (cần _M đã load)
   refreshBangDropdown();
 }
 
@@ -3551,13 +3546,27 @@ function filterAssignRefs() {
 function renderAssignRefsList(q) {
   const wrap = document.getElementById('asgn-refs-list');
   if (!wrap) return;
+
+  // Vietnamese-aware sort key
+  const viKey = s => String(s||'').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase();
+
   const filtered = _asgnAllRefs.filter(r => {
     const nm = String(r[1]||'').toLowerCase();
     const cd = String(r[0]||'').toLowerCase();
     return !q || nm.includes(q) || cd.includes(q);
   });
 
-  // Update selection counter
+  // Sort: đã chọn lên trên (A→Z), chưa chọn xuống dưới (A→Z)
+  filtered.sort((a, b) => {
+    const cA = String(a[0]||'').trim().toUpperCase();
+    const cB = String(b[0]||'').trim().toUpperCase();
+    const sA = _asgnSelected.has(cA) ? 0 : 1;
+    const sB = _asgnSelected.has(cB) ? 0 : 1;
+    if (sA !== sB) return sA - sB;
+    return viKey(a[1]).localeCompare(viKey(b[1]));
+  });
+
   const cntEl = document.getElementById('asgn-sel-count');
   if (cntEl) cntEl.textContent = `${_asgnSelected.size} / ${_asgnAllRefs.length} đã chọn`;
 
@@ -3566,8 +3575,8 @@ function renderAssignRefsList(q) {
     return;
   }
 
-  // Compact table layout — handles 100+ refs well
-  const rows = filtered.map((r, i) => {
+  let lastGroup = null;
+  const rowsHtml = filtered.map((r, i) => {
     const code    = String(r[0]||'').trim().toUpperCase();
     const name    = String(r[1]||code);
     const curGiai = String(r[8]||'').trim();
@@ -3583,28 +3592,39 @@ function renderAssignRefsList(q) {
           : `<span style="color:var(--gn);font-size:11px">✓ Trong giải</span>`)
         : `<span style="color:var(--tx3);font-size:11px">—</span>`;
 
-    const bg = checked ? 'rgba(34,197,94,.05)' : (i%2===0?'var(--bg2)':'var(--bg3)');
-    return `<tr style="background:${bg};cursor:pointer" onclick="toggleAsgnRef('${code}')">
-      <td style="padding:8px 12px;width:36px">
+    const bg = checked ? 'rgba(34,197,94,.06)' : (i%2===0?'var(--bg2)':'var(--bg3)');
+
+    // Separator + label khi chuyển nhóm đã chọn → chưa chọn
+    let sep = '';
+    const grp = checked ? 's' : 'u';
+    if (lastGroup !== null && grp !== lastGroup) {
+      sep = `<tr><td colspan="4" style="padding:0;height:2px;background:var(--bdr2)"></td></tr>
+<tr style="background:var(--bg4)"><td colspan="4" style="padding:4px 12px;font-size:10px;color:var(--tx3);font-weight:700;text-transform:uppercase;letter-spacing:.8px">Chưa chọn</td></tr>`;
+    }
+    lastGroup = grp;
+
+    return sep + `<tr style="background:${bg};cursor:pointer;transition:background .1s" onclick="toggleAsgnRef('${code}')">
+      <td style="padding:9px 12px;width:36px">
         <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleAsgnRef('${code}')"
           style="width:16px;height:16px;accent-color:var(--gn);cursor:pointer">
       </td>
-      <td style="padding:8px 4px 8px 0;font-weight:600;font-size:13px;color:${checked?'var(--tx)':'var(--tx2)'}">${esc(name)}</td>
-      <td style="padding:8px 12px 8px 0;font-family:var(--mo);font-size:11px;color:var(--tx3)">${esc(code)}</td>
-      <td style="padding:8px 12px 8px 0">${statusHtml}</td>
+      <td style="padding:9px 4px 9px 0;font-weight:${checked?'700':'500'};font-size:13px;color:${checked?'var(--tx)':'var(--tx2)'}">${esc(name)}</td>
+      <td style="padding:9px 12px 9px 0;font-family:var(--mo);font-size:11px;color:var(--tx3)">${esc(code)}</td>
+      <td style="padding:9px 12px 9px 0">${statusHtml}</td>
     </tr>`;
   }).join('');
 
   wrap.innerHTML = `<table style="width:100%;border-collapse:collapse">
     <thead>
-      <tr style="background:var(--bg4)">
-        <th style="width:36px;padding:7px 12px"></th>
-        <th style="padding:7px 4px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px">Họ tên</th>
-        <th style="padding:7px 12px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px">Mã</th>
-        <th style="padding:7px 12px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px">Trạng thái</th>
+      <tr style="background:var(--bg4);position:sticky;top:0;z-index:2">
+        <th style="width:36px;padding:7px 12px;border-bottom:1px solid var(--bdr)"></th>
+        <th style="padding:7px 4px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--bdr)">Họ tên</th>
+        <th style="padding:7px 12px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--bdr)">Mã</th>
+        <th style="padding:7px 12px 7px 0;text-align:left;font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--bdr)">Trạng thái</th>
       </tr>
+      <tr style="background:rgba(34,197,94,.08)"><td colspan="4" style="padding:4px 12px;font-size:10px;color:var(--gn);font-weight:700;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid rgba(34,197,94,.2)">Đã chọn cho giải</td></tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rowsHtml}</tbody>
   </table>`;
 }
 
@@ -3690,6 +3710,71 @@ async function _reloadAssignRefs() {
 }
 
 function filterAssignedRefs() { renderAssignedRefs(_asgnGiaiId, _asgnGiai); }
+
+// ── Cập nhật dropdown Bảng đấu trong phân sân nhanh ──
+function refreshBangDropdown() {
+  const ndFilt = document.getElementById('court-nd-filter');
+  const bangSel = document.getElementById('court-bang');
+  const courtSel = document.getElementById('court-val');
+  if (!bangSel) return;
+
+  const nd = ndFilt ? ndFilt.value : '';
+
+  // Lấy danh sách bảng từ _M (lịch đấu của giải đang chọn)
+  const bangs = [...new Set((_M||[])
+    .filter(m => {
+      const mGiai = String(m[0]||'');
+      if (mGiai !== _asgnGiaiId && mGiai !== _asgnGiai) return false;
+      if (nd && String(m[1]||'') !== nd) return false;
+      return true;
+    })
+    .map(m => String(m[2]||'')).filter(Boolean)
+  )].sort();
+
+  bangSel.innerHTML = '<option value="">Chọn bảng</option>' +
+    bangs.map(b => {
+      const assignedCourt = _bangCourtMap[b] || '';
+      const label = assignedCourt ? `${b} → ${assignedCourt}` : b;
+      return `<option value="${esc(b)}">${esc(label)}</option>`;
+    }).join('');
+
+  // Cập nhật dropdown nội dung (court-nd-filter)
+  if (ndFilt) {
+    const nds = [...new Set((_M||[])
+      .filter(m => String(m[0]||'') === _asgnGiaiId || String(m[0]||'') === _asgnGiai)
+      .map(m => String(m[1]||'')).filter(Boolean)
+    )].sort();
+    const curNd = ndFilt.value;
+    ndFilt.innerHTML = '<option value="">Tất cả</option>' +
+      nds.map(n => `<option value="${esc(n)}"${n===curNd?' selected':''}>${esc(n)}</option>`).join('');
+  }
+
+  // Cập nhật dropdown sân
+  if (courtSel) {
+    const tourn = _T.find(t => String(t[0]||'') === _asgnGiaiId);
+    const courts = (tourn && tourn[3])
+      ? String(tourn[3]).split(',').map(s => s.trim()).filter(Boolean) : [];
+    courtSel.innerHTML = '<option value="">— Chọn sân —</option>' +
+      courts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  }
+
+  renderBangCourtTags();
+}
+
+// ── Hiển thị tags các bảng đã gán sân ──
+function renderBangCourtTags() {
+  const wrap = document.getElementById('bang-court-tags');
+  if (!wrap) return;
+  const entries = Object.entries(_bangCourtMap);
+  if (!entries.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = entries.map(([bang, court]) =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.1);
+      border:1px solid rgba(14,165,233,.25);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--ac2)">
+      ${esc(bang)} → ${esc(court)}
+    </span>`
+  ).join('');
+}
 
 function renderAssignedRefs(giaiId, giaiName) {
   const tb = document.getElementById('asgn-tb');
