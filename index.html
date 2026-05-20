@@ -697,10 +697,22 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <button class="rfbtn" id="dash-rf" onclick="loadDash()">↻ Làm mới</button>
       </div>
 
-      <!-- Filter: chọn giải -->
+      <!-- Filter: Giải → Nội dung → Bảng -->
       <div class="fbar">
         <label>🏆 Giải đấu:</label>
-        <select id="dash-giai" onchange="loadDash()"><option value="">Tất cả giải</option></select>
+        <select id="dash-giai" onchange="onDashGiaiChange()" style="min-width:180px">
+          <option value="">Tất cả giải</option>
+        </select>
+        <span class="farrow" id="dash-nd-sep" style="display:none">›</span>
+        <label id="dash-nd-lbl" style="display:none">Nội dung:</label>
+        <select id="dash-nd" onchange="onDashNdChange()" style="display:none;min-width:140px">
+          <option value="">Tất cả ND</option>
+        </select>
+        <span class="farrow" id="dash-bang-sep" style="display:none">›</span>
+        <label id="dash-bang-lbl" style="display:none">Bảng:</label>
+        <select id="dash-bang" onchange="loadDash()" style="display:none;min-width:100px">
+          <option value="">Tất cả bảng</option>
+        </select>
       </div>
 
       <!-- Stats 5 ô -->
@@ -720,6 +732,11 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <div class="dgrid">
         <div class="card"><div class="ct">🔴 Đang thi đấu</div><div id="live-wrap"><div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div></div></div>
         <div class="card"><div class="ct">📈 Tiến độ theo nội dung</div><div id="cat-wrap"><div class="empty"><div class="ei">⏳</div><p>Đang tải...</p></div></div></div>
+      </div>
+      <!-- Bảng trận đấu chi tiết (hiện khi lọc theo ND/Bảng) -->
+      <div class="card" id="dash-matches-card" style="display:none">
+        <div class="ct" id="dash-matches-title">📋 Danh sách trận</div>
+        <div id="dash-matches-wrap"></div>
       </div>
       <div class="card"><div class="ct">🕐 Kết quả gần nhất</div><div id="rec-wrap"><div class="empty"><div class="ei">🏆</div><p>Chưa có</p></div></div></div>
     </div>
@@ -1655,20 +1672,49 @@ function cacheGet(key) {
 function cacheSet(key, data) { _cache[key] = { ts: Date.now(), data }; }
 
 async function prefetchAll() {
-  // Tải song song Tournaments + Matches để dropdown hoạt động ngay
+  // Tải song song: Tournaments + Matches + Results + Live (1 roundtrip)
+  const giaiParam = ROLE === 'manager' ? MY_GIAI : '';
   try {
-    const giaiParam = ROLE === 'manager' ? MY_GIAI : '';
-    const [tRes, mRes] = await Promise.all([
-      gGet({ action: 'tournaments' }),
-      gGet({ action: 'matches', giai: giaiParam })
+    const [tRes, mRes, rRes, lRes] = await Promise.all([
+      gGet({ action: 'tournaments' }).catch(() => ({})),
+      gGet({ action: 'matches', giai: giaiParam }).catch(() => ({})),
+      gGet({ action: 'results', giai: giaiParam }).catch(() => ({})),
+      gGet({ action: 'live',   code: 'all', giai: giaiParam }).catch(() => ({}))
     ]);
-    _T = tRes.rows?.slice(1) || [];
-    _M = normalizeMatchRows(mRes.rows?.slice(1) || []);
-    cacheSet('tournaments', _T);
-    cacheSet('matches_' + giaiParam, _M);
+
+    // Tournaments
+    if (tRes.rows?.length) {
+      _T = tRes.rows.slice(1);
+      cacheSet('tournaments', _T);
+    }
+    // Matches
+    if (mRes.rows?.length > 1) {
+      _M = normalizeMatchRows(mRes.rows.slice(1));
+      cacheSet('matches_' + giaiParam, _M);
+    }
+    // Results → build _dK, _dkScores ngay
+    if (rRes.rows?.length > 1) {
+      buildDkFromResults(rRes.rows.slice(1));
+      cacheSet('results_' + giaiParam, rRes.rows.slice(1));
+    }
+    // Live → build _lK, _liveScores ngay
+    if (lRes.rows?.length > 1) {
+      _lK = new Set(lRes.rows.slice(1).map(r => String(r[0]||'')));
+      lRes.rows.slice(1).forEach(r => {
+        const key = String(r[0]||'');
+        if (key) _liveScores[key] = { scoreA: Number(r[3])||0, scoreB: Number(r[4])||0,
+          teamA: String(r[2]||''), teamB: String(r[5]||''), game: String(r[7]||'') };
+      });
+    }
+
     populateTournamentDropdowns();
     if (document.getElementById('tv-list')) renderTournCards(_T);
-  } catch(e) { /* bỏ qua lỗi prefetch */ }
+    console.log('[prefetch] OK — T:', _T.length, 'M:', _M.length,
+      'done:', _dkBangCode.size, 'live:', _lK.size);
+  } catch(e) {
+    console.error('[prefetch] Error:', e.message);
+    toast('Lỗi kết nối GAS — kiểm tra URL deploy', 'er');
+  }
   loadDash();
 }
 
@@ -1695,6 +1741,34 @@ function nav(p) {
     players: loadPlayers,
   };
   if (loaders[p]) loaders[p]();
+  // Restart live polling cho trang hiện tại
+  clearInterval(_liveTimer2);
+  if (['dashboard','tournaments','matches'].includes(p)) {
+    _liveTimer2 = setInterval(updateLiveScores, 10000);
+  }
+}
+
+async function updateLiveScores() {
+  if (!GS) return;
+  try {
+    const d = await gGet({ action: 'live', code: 'all' });
+    if (!d.rows?.length) return;
+    const newLK = new Set();
+    const newLS = {};
+    d.rows.slice(1).forEach(r => {
+      const key = String(r[0]||'');
+      if (!key) return;
+      newLK.add(key);
+      newLS[key] = { scoreA:Number(r[3])||0, scoreB:Number(r[4])||0,
+        teamA:String(r[2]||''), teamB:String(r[5]||''), game:String(r[7]||'') };
+    });
+    _lK = newLK;
+    _liveScores = newLS;
+    // Re-render nếu đang ở trang liên quan
+    if (_curPage === 'tournaments' && document.getElementById('tv-nd')?.style.display !== 'none') {
+      renderBangList(_curGiaiId||'', _curNd||'');
+    }
+  } catch(e) { /* silent */ }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1809,9 +1883,13 @@ function getBangs(giai, nd) {
 // ════════════════════════════════════════════════════════════════
 async function loadDash() {
   const btn = document.getElementById('dash-rf'); btn.textContent = '⏳ ...';
-  const giai = document.getElementById('dash-giai').value;
+  const giaiId = document.getElementById('dash-giai').value;
+  // Gửi tên giải (giaiName) vì GAS lưu tên trong sheet, không phải mã
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const nd   = document.getElementById('dash-nd')?.value   || '';
+  const bang = document.getElementById('dash-bang')?.value || '';
   try {
-    const d = await gGet({ action: 'dashboard', adminCode: CODE, giai });
+    const d = await gGet({ action: 'dashboard', adminCode: CODE, giai: giaiName, nd, bang });
     if (!d.ok) { toast('Lỗi dashboard: ' + d.reason, 'er'); return; }
     _dashData = d;
     // Populate giải dropdown nếu có data
@@ -1819,22 +1897,48 @@ async function loadDash() {
       _T = d.tournaments.map(t => [t.id,t.name,t.venue,t.courts,t.startDate,t.endDate,t.status,t.note,t.refs||[]]);
       populateTournamentDropdowns();
     }
-    const s = d.summary || {};
-    // Cập nhật _dK từ recentResults (để renderBangList đồng bộ)
-    if (d.recentResults?.length) {
-      // recentResults từ GAS: {time,giai,nd,bang,code,teamA,teamB,scoreA,scoreB,winner}
-      // Build partial _dK update (chỉ thêm, không xóa để giữ data hiện có)
-      d.recentResults.forEach(r => {
-        if (!r.bang || !r.code) return;
-        const bc = `${r.bang}|${r.code}`;
-        _dkBangCode.add(bc);
-        if (r.giai) _dK.add(`${r.giai}|${r.bang}|${r.code}`);
-        if (!_dkScores[bc] && r.scoreA !== undefined) {
-          _dkScores[bc] = { scoreA: Number(r.scoreA)||0, scoreB: Number(r.scoreB)||0,
-                            teamA: r.teamA||'', teamB: r.teamB||'', winner: r.winner||'' };
-        }
-      });
+    // Populate Nội dung dropdown (chỉ hiện khi đã chọn giải)
+    const giaiSelectedId = document.getElementById('dash-giai').value;
+    const ndSel   = document.getElementById('dash-nd');
+    const bangSel = document.getElementById('dash-bang');
+    const ndSep   = document.getElementById('dash-nd-sep');
+    const bangSep = document.getElementById('dash-bang-sep');
+    const ndLbl   = document.getElementById('dash-nd-lbl');
+    const bangLbl = document.getElementById('dash-bang-lbl');
+    if (giaiSelectedId && ndSel) {
+      const nds = d.noidungs || [];
+      const curNd = ndSel.value;
+      ndSel.innerHTML = '<option value="">Tất cả ND</option>' + nds.map(n=>`<option value="${esc(n)}"${n===curNd?' selected':''}>${esc(n)}</option>`).join('');
+      [ndSel, ndSep, ndLbl].forEach(el => el && (el.style.display = ''));
+      // Populate Bảng dropdown
+      const bangs = d.bangs || [];
+      const curBang = bangSel?.value||'';
+      if (bangSel) {
+        bangSel.innerHTML = '<option value="">Tất cả bảng</option>' + bangs.map(b=>`<option value="${esc(b)}"${b===curBang?' selected':''}>${esc(b)}</option>`).join('');
+        const showBang = !!ndSel.value;
+        [bangSel, bangSep, bangLbl].forEach(el => el && (el.style.display = showBang ? '' : 'none'));
+      }
+    } else {
+      [ndSel, ndSep, ndLbl, bangSel, bangSep, bangLbl].forEach(el => el && (el.style.display = 'none'));
     }
+    const s = d.summary || {};
+    // Cập nhật _dK/_dkScores từ recentResults để renderBangList đồng bộ
+    try {
+      if (Array.isArray(d.recentResults) && d.recentResults.length) {
+        d.recentResults.forEach(r => {
+          if (!r || !r.bang || !r.code) return;
+          const bc = String(r.bang) + '|' + String(r.code);
+          _dkBangCode.add(bc);
+          if (r.giai) _dK.add(String(r.giai) + '|' + String(r.bang) + '|' + String(r.code));
+          if (!_dkScores[bc]) {
+            _dkScores[bc] = {
+              scoreA: Number(r.scoreA)||0, scoreB: Number(r.scoreB)||0,
+              teamA: String(r.teamA||''), teamB: String(r.teamB||''), winner: String(r.winner||'')
+            };
+          }
+        });
+      }
+    } catch(eDk) { console.warn('[loadDash] _dK update warn:', eDk); }
     document.getElementById('s-total').textContent = s.totalMatches || 0;
     document.getElementById('s-live').textContent  = s.liveMatches  || 0;
     document.getElementById('s-done').textContent  = s.doneMatches  || 0;
@@ -1888,18 +1992,112 @@ async function loadDash() {
     const rec = d.recentResults || [];
     rw.innerHTML = !rec.length
       ? '<div class="empty"><div class="ei">🏆</div><p>Chưa có kết quả</p></div>'
-      : `<table class="tbl"><thead><tr><th>Thời gian</th><th>Giải</th><th>Nội dung · Mã</th><th>Đội A</th><th>Tỉ số</th><th>Đội B</th><th>🏆 Thắng</th></tr></thead><tbody>${
-          rec.map(r => `<tr>
-            <td style="font-size:11px;color:var(--tx3)">${r.time}</td>
-            <td style="font-size:11px;color:var(--ac)">${r.giai}</td>
-            <td><span class="mono">${r.code}</span><br><small style="color:var(--tx3)">${r.nd} · ${r.bang}</small></td>
-            <td style="${r.winner===r.teamA?'color:var(--gn);font-weight:700':''}">${r.teamA}</td>
-            <td class="score">${r.scoreA}-${r.scoreB}</td>
-            <td style="${r.winner===r.teamB?'color:var(--gn);font-weight:700':''}">${r.teamB}</td>
-            <td style="color:var(--gn);font-weight:700">🏆 ${r.winner||'—'}</td></tr>`).join('')
-        }</tbody></table>`;
-  } catch(e) { toast('Lỗi kết nối', 'er'); }
-  finally { btn.textContent = '↻ Làm mới'; }
+      : `<div class="tw"><table class="tbl"><thead><tr>
+          <th style="white-space:nowrap">Thời gian</th><th>Giải</th>
+          <th style="white-space:nowrap">ND · Mã</th><th>Đội A</th>
+          <th style="text-align:center">Tỉ số</th>
+          <th>Đội B</th><th>🏆 Thắng</th>
+        </tr></thead><tbody>${
+          rec.map(r => {
+            const wA = r.winner===r.teamA, wB = r.winner===r.teamB;
+            return `<tr>
+              <td style="font-size:11px;color:var(--tx3);white-space:nowrap">${r.time||'—'}</td>
+              <td style="font-size:11px;color:var(--ac);white-space:nowrap">${r.giai||'—'}</td>
+              <td><span class="mono">${r.code||'—'}</span><br><small style="color:var(--tx3)">${r.nd||''} · ${r.bang||''}</small></td>
+              <td style="font-weight:${wA?700:400};color:${wA?'var(--gn)':'var(--tx)'}">${r.teamA||'—'}</td>
+              <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:14px;color:var(--gn)">${r.scoreA}–${r.scoreB}</td>
+              <td style="font-weight:${wB?700:400};color:${wB?'var(--gn)':'var(--tx)'}">${r.teamB||'—'}</td>
+              <td style="color:var(--gn);font-weight:700;white-space:nowrap">🏆 ${r.winner||'—'}</td>
+            </tr>`;
+          }).join('')
+        }</tbody></table></div>`;
+
+    // Bảng trận chi tiết khi lọc theo ND/Bảng
+    const mCard  = document.getElementById('dash-matches-card');
+    const mWrap  = document.getElementById('dash-matches-wrap');
+    const mTitle = document.getElementById('dash-matches-title');
+    const filterNd   = document.getElementById('dash-nd')?.value   || '';
+    const filterBang = document.getElementById('dash-bang')?.value || '';
+    if (mCard && (filterNd || filterBang)) {
+      mCard.style.display = '';
+      const giaiLbl = d.filterGiai || '';
+      const ndLbl   = filterNd || 'Tất cả ND';
+      const bangLbl = filterBang || 'Tất cả bảng';
+      if (mTitle) mTitle.textContent = `📋 Trận đấu — ${giaiLbl}${filterNd?' › '+filterNd:''}${filterBang?' › '+filterBang:''}`;
+      // Lấy matches từ _M đã cache (đã load khi init)
+      const giaiSelectedId = document.getElementById('dash-giai').value;
+      const giaiN = giaiSelectedId ? ((_T.find(t=>String(t[0]||'')===giaiSelectedId)||[])[1]||giaiSelectedId) : '';
+      const filteredM = _M.filter(m => {
+        if (giaiN && String(m[0]||'') !== giaiN) return false;
+        if (filterNd   && String(m[1]||'') !== filterNd)   return false;
+        if (filterBang && String(m[2]||'') !== filterBang) return false;
+        return true;
+      });
+      filteredM.sort((a,b) => String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true}) || String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true}));
+      if (!filteredM.length) {
+        mWrap.innerHTML = '<div class="empty"><div class="ei">📋</div><p>Không có trận nào</p></div>';
+      } else {
+        const rows = filteredM.map(m => {
+          const done = isMatchDone(m);
+          const lk   = `${m[1]}|${m[2]}|${m[3]}`;
+          const live = !done && _lK.has(lk);
+          let sA, sB;
+          if (live && _liveScores[lk]) { sA = _liveScores[lk].scoreA; sB = _liveScores[lk].scoreB; }
+          else { const fs = getFinalScore(m); sA = fs?.scoreA??null; sB = fs?.scoreB??null; }
+          const scoreColor = done ? 'var(--gn)' : live ? 'var(--or)' : 'var(--tx3)';
+          const sAcell = sA!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${scoreColor};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
+          const sBcell = sB!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${scoreColor};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
+          const status = done ? '<span class="bdg bo" style="font-size:10px">✅ Xong</span>'
+            : live ? '<span class="bdg bw" style="font-size:10px;animation:pulse 1s infinite">⚡ Live</span>'
+            : '<span class="bdg bg0" style="font-size:10px">⬜ Chưa</span>';
+          const rowStyle = done ? 'background:rgba(34,197,94,.04)' : live ? 'background:rgba(245,158,11,.06);border-left:2px solid var(--or)' : '';
+          return `<tr${rowStyle?' style="'+rowStyle+'"':''}>
+            <td style="font-family:var(--mo);color:var(--ac);font-weight:700;white-space:nowrap">${m[2]||''} · ${m[3]||''}</td>
+            <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
+            <td style="text-align:center">${sAcell}</td>
+            <td style="text-align:center">${sBcell}</td>
+            <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
+            <td style="font-size:11px;color:var(--ac2)">${m[8]||'—'}</td>
+            <td>${status}</td>
+          </tr>`;
+        }).join('');
+        mWrap.innerHTML = `<div class="tw"><table class="tbl" style="font-size:12px">
+          <thead><tr>
+            <th>Bảng · Mã</th><th>Đội A</th>
+            <th style="text-align:center">A</th><th style="text-align:center">B</th>
+            <th>Đội B</th><th>Sân</th><th>Trạng thái</th>
+          </tr></thead><tbody>${rows}</tbody></table></div>`;
+      }
+    } else if (mCard) {
+      mCard.style.display = 'none';
+    }
+
+  } catch(e) {
+    console.error('[loadDash] Error:', e.message, e.stack||'');
+    // Phân biệt lỗi kết nối vs lỗi JS
+    const isNetwork = e instanceof TypeError || (e.message||'').includes('fetch') || (e.message||'').includes('network');
+    toast(isNetwork ? 'Lỗi kết nối GAS — kiểm tra URL và deploy' : 'Lỗi dashboard: ' + (e.message||e), 'er');
+  }
+  finally { if(btn) btn.textContent = '↻ Làm mới'; }
+}
+
+// ── Dashboard cascade filter handlers ──
+function onDashGiaiChange() {
+  // Reset ND và Bang khi đổi giải
+  const ndSel  = document.getElementById('dash-nd');
+  const bangSel = document.getElementById('dash-bang');
+  if (ndSel)   { ndSel.value = ''; ndSel.innerHTML = '<option value="">Tất cả ND</option>'; }
+  if (bangSel) { bangSel.value = ''; bangSel.innerHTML = '<option value="">Tất cả bảng</option>'; }
+  // Ẩn ND/Bang trước khi load (sẽ hiện lại sau loadDash nếu có data)
+  ['dash-nd','dash-nd-sep','dash-nd-lbl','dash-bang','dash-bang-sep','dash-bang-lbl']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  loadDash();
+}
+function onDashNdChange() {
+  // Reset Bảng khi đổi ND
+  const bangSel = document.getElementById('dash-bang');
+  if (bangSel) { bangSel.value = ''; }
+  loadDash();
 }
 
 // Stat modal khi click thẻ
@@ -2087,7 +2285,7 @@ function renderNdCards(r) {
 
 // ── Click nội dung → View Bảng ──
 function openNdDetail(giaiId, nd) {
-  _curNd = nd;
+  _curNd = nd; _curGiaiId = giaiId;
   const r = _T.find(t=>String(t[0]||'')===giaiId);
   if (!r) return;
   _curTourn = r;
@@ -2104,8 +2302,13 @@ function openNdDetail(giaiId, nd) {
     // Chưa có → load lại từ GSheets rồi render
     document.getElementById('bang-list').innerHTML =
       '<div style="text-align:center;padding:40px"><span class="spin"></span></div>';
-    // Tải matches + results + live để _dK/_dkScores luôn mới nhất
-    loadMatchesCache(giaiId).then(() => renderBangList(giaiId, nd));
+    // Hiện loading trước khi tải
+    document.getElementById('bang-list').innerHTML = '<div class="empty" style="padding:32px"><span class="spin"></span><p style="margin-top:12px;color:var(--tx3)">Đang tải bảng đấu...</p></div>';
+    loadMatchesCache(giaiId)
+      .then(() => renderBangList(giaiId, nd))
+      .catch(e => {
+        document.getElementById('bang-list').innerHTML = '<div class="empty"><div class="ei">⚠️</div><p>Lỗi tải dữ liệu: ' + (e.message||'unknown') + '</p><button class="btn bp" onclick="showTournView('nd')">↻ Thử lại</button></div>';
+      });
   } else {
     renderBangList(giaiId, nd);
   }
@@ -3055,39 +3258,47 @@ function normalizeMatchRows(rows) {
 }
 
 async function loadMatchesCache(giaiId='') {
+  // Resolve giaiName từ _T (luôn dùng tên để match với GSheets)
+  const giaiName = giaiId ? String((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const cKey = 'matches_' + giaiName;
+
+  // Dùng cache nếu còn mới VÀ đã có done-keys
+  const cached = cacheGet(cKey);
+  if (cached) {
+    // Merge vào _M (thay thế các trận cùng giải)
+    const others = _M.filter(m => String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId);
+    _M = [...others, ...cached];
+    return;
+  }
+
   try {
-    const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||'') : '';
-    // Fetch theo cả mã lẫn tên để đảm bảo lấy đủ
-    const fetchById   = giaiId   ? gGet({action:'matches',giai:giaiId})   : Promise.resolve({rows:[]});
-    const fetchByName = (giaiName && giaiName!==giaiId) ? gGet({action:'matches',giai:giaiName}) : Promise.resolve({rows:[]});
-    const [md, rd, ld, md2] = await Promise.all([
-      fetchById,
-      gGet({action:'results', giai:giaiName||giaiId}),
-      gGet({action:'live',    code:'all', giai:giaiName||giaiId}),
-      fetchByName
+    // Tải song song: Matches + Results + Live (1 roundtrip)
+    const [md, rd, ld] = await Promise.all([
+      gGet({action:'matches', giai: giaiName}).catch(() => ({})),
+      gGet({action:'results', giai: giaiName}).catch(() => ({})),
+      gGet({action:'live',    code:'all', giai: giaiName}).catch(() => ({}))
     ]);
 
-    if (giaiId) {
-      // Gộp + loại trùng theo key bang|code (bỏ qua m[0] vì có thể khác nhau)
-      const byId   = normalizeMatchRows(md.rows?.slice(1)  || []);
-      const byName = normalizeMatchRows(md2.rows?.slice(1) || []);
-      const seen   = new Set();
-      const merged = [...byId, ...byName].filter(r => {
-        const k = `${r[2]}|${r[3]}`; // bang|code — đủ unique trong 1 giải
-        if (seen.has(k)) return false;
-        seen.add(k); return true;
-      });
-      // Xóa cả mã lẫn tên cũ, thêm merged (đã normalize về mã)
-      _M = _M.filter(m => {
-        const v = String(m[0]||'');
-        return v !== giaiId && v !== giaiName;
-      }).concat(merged);
-    } else {
-      _M = normalizeMatchRows(md.rows?.slice(1)||[]);
+    if (md.rows?.length > 1) {
+      const newRows = normalizeMatchRows(md.rows.slice(1));
+      cacheSet(cKey, newRows);
+      const others = _M.filter(m => String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId);
+      _M = [...others, ...newRows];
     }
-    buildDkFromResults(rd.rows?.slice(1)||[]);
-    _lK = new Set((ld.rows?.slice(1)||[]).map(r=>String(r[0]||'')));
-  } catch(e) { console.error('loadMatchesCache error', e); }
+    if (rd.rows?.length > 1) buildDkFromResults(rd.rows.slice(1));
+    if (ld.rows?.length > 1) {
+      _lK = new Set(ld.rows.slice(1).map(r=>String(r[0]||'')));
+      ld.rows.slice(1).forEach(r => {
+        const key = String(r[0]||'');
+        if (key) _liveScores[key] = { scoreA:Number(r[3])||0, scoreB:Number(r[4])||0,
+          teamA:String(r[2]||''), teamB:String(r[5]||''), game:String(r[7]||'') };
+      });
+    }
+    console.log('[loadMatchesCache] giaiName:', giaiName, '→ M:', _M.length, 'done:', _dkBangCode.size);
+  } catch(e) {
+    console.error('[loadMatchesCache]', e.message);
+    throw e; // Re-throw để caller biết
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
