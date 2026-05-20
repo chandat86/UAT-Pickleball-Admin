@@ -1314,6 +1314,19 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 
 <div id="toast"></div>
 
+<!-- Progress modal cho tạo bảng -->
+<div id="prog-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9500;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:16px;padding:28px 32px;width:min(380px,88vw);box-shadow:var(--shadow-lg);text-align:center">
+    <div style="font-size:22px;margin-bottom:12px" id="prog-icon">⏳</div>
+    <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px" id="prog-title">Đang tạo bảng đấu...</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:16px" id="prog-sub">Chuẩn bị...</div>
+    <div style="background:var(--bg3);border-radius:20px;height:10px;overflow:hidden;margin-bottom:10px">
+      <div id="prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--ac),var(--gn));border-radius:20px;transition:width .3s ease"></div>
+    </div>
+    <div style="font-size:12px;color:var(--tx3)" id="prog-count">0 / 0 trận</div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════════════════════
 //  STATE
@@ -1491,6 +1504,34 @@ function toast(msg, t='in') {
   el.className = `ti ${t==='ok'?'ok':t==='er'?'er':'in'}`;
   el.innerHTML = `<span>${t==='ok'?'✅':t==='er'?'❌':'ℹ️'}</span>${msg}`;
   w.appendChild(el); setTimeout(() => el.remove(), 3200);
+}
+function showProg(title, sub, total) {
+  const ov = document.getElementById('prog-overlay');
+  ov.style.display = 'flex';
+  document.getElementById('prog-icon').textContent = '⏳';
+  document.getElementById('prog-title').textContent = title;
+  document.getElementById('prog-sub').textContent = sub;
+  document.getElementById('prog-bar').style.width = '0%';
+  document.getElementById('prog-count').textContent = '0 / ' + total + ' trận';
+}
+function updateProg(done, total, added, skipped, failed) {
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-count').textContent = done + ' / ' + total + ' trận';
+  let sub = '✅ ' + added + ' thêm mới';
+  if (skipped) sub += '  ·  ⏭ ' + skipped + ' bỏ qua';
+  if (failed)  sub += '  ·  ❌ ' + failed + ' lỗi';
+  document.getElementById('prog-sub').textContent = sub;
+}
+function doneProg(added, skipped, failed) {
+  document.getElementById('prog-icon').textContent = failed ? '⚠️' : '✅';
+  document.getElementById('prog-bar').style.width = '100%';
+  let title = '✅ Tạo xong ' + added + ' trận!';
+  if (skipped) title += '  (' + skipped + ' bỏ qua)';
+  if (failed)  title += '  (' + failed + ' lỗi)';
+  document.getElementById('prog-title').textContent = title;
+  document.getElementById('prog-sub').textContent = 'Đang tải lại dữ liệu...';
+  setTimeout(() => { document.getElementById('prog-overlay').style.display = 'none'; }, 1800);
 }
 function openMo(id) { document.getElementById(id).classList.add('op'); }
 function closeMo(id) { document.getElementById(id).classList.remove('op'); }
@@ -2432,33 +2473,26 @@ async function importMultiBang(bangMap, bangOrder, courtOverride) {
     allRows = allRows.concat(bangRows);
   });
 
-  // Đóng modal, hiển thị progress
-  closeMo('mo-bang');
   var total = allRows.length;
-  toast('⏳ Đang tạo ' + total + ' trận từ ' + bangOrder.length + ' bảng...','in');
-  var added=0, skipped=0, failed=0;
+  closeMo('mo-bang');
+  showProg('Đang tạo ' + bangOrder.length + ' bảng đấu...', 'Chuẩn bị...', total);
 
-  // GỬI TUẦN TỰ — tránh race condition trên GAS appendRow
-  for (var ri=0; ri<allRows.length; ri++) {
-    var row = allRows[ri];
-    try {
-      var d = await gPost({action:'addMatchAdmin', adminCode:CODE, row:row});
-      if (d && d.ok) added++;
-      else skipped++;
-    } catch(e) {
-      failed++;
+  var added=0, skipped=0, failed=0;
+  var BATCH = 3; // gửi 3 request song song — đủ nhanh, không race condition trên GAS
+
+  for (var i=0; i<allRows.length; i+=BATCH) {
+    var chunk = allRows.slice(i, i+BATCH);
+    // Gửi tuần tự trong chunk để tránh race condition
+    for (var j=0; j<chunk.length; j++) {
+      try {
+        var d = await gPost({action:'addMatchAdmin', adminCode:CODE, row:chunk[j]});
+        if (d && d.ok) added++; else skipped++;
+      } catch(e) { failed++; }
     }
-    // Progress toast mỗi 6 trận
-    if ((ri+1) % 6 === 0 || ri === allRows.length-1) {
-      toast('⏳ ' + (ri+1) + '/' + total + ' trận...', 'in');
-    }
+    updateProg(Math.min(i+BATCH, total), total, added, skipped, failed);
   }
 
-  var msg = '✅ Import xong: ' + added + ' trận mới';
-  if (skipped) msg += ', ' + skipped + ' bỏ qua (trùng)';
-  if (failed)  msg += ', ' + failed  + ' lỗi';
-  toast(msg, (failed||skipped) ? 'wn' : 'ok');
-
+  doneProg(added, skipped, failed);
   await loadMatchesCache(giaiId);
   renderBangList(giaiId, _curNd);
 }
@@ -2538,21 +2572,18 @@ async function saveBang() {
   if (!_bangRows.length) { previewBang(); if (!_bangRows.length) return; }
   var btn = document.getElementById('bang-save-btn');
   btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
-  closeMo('mo-bang');
   var total = _bangRows.length;
-  toast('⏳ Đang tạo ' + total + ' trận...','in');
+  closeMo('mo-bang');
+  showProg('Đang tạo bảng đấu...', 'Chuẩn bị...', total);
   var added=0, skipped=0, failed=0;
-  // Gửi tuần tự để tránh race condition trên GAS
   for (var ri=0; ri<_bangRows.length; ri++) {
     try {
       var d = await gPost({action:'addMatchAdmin', adminCode:CODE, row:_bangRows[ri]});
       if (d && d.ok) added++; else skipped++;
     } catch(e) { failed++; }
+    updateProg(ri+1, total, added, skipped, failed);
   }
-  var msg = '✅ Tạo xong: ' + added + ' trận mới';
-  if (skipped) msg += ', ' + skipped + ' bỏ qua (trùng)';
-  if (failed)  msg += ', ' + failed  + ' lỗi';
-  toast(msg, (failed||skipped) ? 'wn' : 'ok');
+  doneProg(added, skipped, failed);
   btn.disabled=false; btn.textContent='💾 Tạo bảng + lịch đấu';
   await loadMatchesCache(String(_curTourn[0]||''));
   renderBangList(String(_curTourn[0]||''), _curNd);
@@ -2561,14 +2592,28 @@ async function saveBang() {
 // Load matches nhẹ (chỉ lấy cache, không render table)
 async function loadMatchesCache(giaiId='') {
   try {
-    const [md,rd,ld] = await Promise.all([
-      gGet({action:'matches',giai:giaiId}),
-      gGet({action:'results',giai:giaiId}),
-      gGet({action:'live',code:'all',giai:giaiId})
+    // Lấy cả theo mã lẫn tên giải (vì data cũ dùng mã, data mới dùng tên)
+    const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||'') : '';
+    const fetchById   = giaiId   ? gGet({action:'matches',giai:giaiId})   : Promise.resolve({rows:[]});
+    const fetchByName = giaiName && giaiName!==giaiId ? gGet({action:'matches',giai:giaiName}) : Promise.resolve({rows:[]});
+    const [md,rd,ld,md2] = await Promise.all([
+      fetchById,
+      gGet({action:'results',giai:giaiName||giaiId}),
+      gGet({action:'live',code:'all',giai:giaiName||giaiId}),
+      fetchByName
     ]);
     if(giaiId) {
-      // Merge: giữ matches giải khác, thêm matches giải mới
-      _M = _M.filter(m=>String(m[0]||'')!==giaiId).concat(md.rows?.slice(1)||[]);
+      // Gộp kết quả từ cả 2 queries, loại trùng bằng key giai|bang|code
+      const byId   = (md.rows?.slice(1)  || []);
+      const byName = (md2.rows?.slice(1) || []);
+      const seen   = new Set();
+      const merged = [...byId, ...byName].filter(r => {
+        const k = `${r[0]}|${r[2]}|${r[3]}`;
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+      // Xóa cả theo mã lẫn tên, rồi thêm merged
+      _M = _M.filter(m => String(m[0]||'')!==giaiId && String(m[0]||'')!==giaiName).concat(merged);
     } else {
       _M = md.rows?.slice(1)||[];
     }
