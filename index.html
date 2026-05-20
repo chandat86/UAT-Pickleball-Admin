@@ -972,16 +972,10 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 <div class="mo" id="mo-tourn"><div class="mbox ww">
   <div class="mh"><div class="mtt" id="tourn-tt">Tạo giải đấu</div><button class="mc" onclick="closeMo('mo-tourn')">✕</button></div>
 
-  <!-- Mã giải tự động -->
-  <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:9px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-    <span style="font-size:12px;color:var(--tx3);white-space:nowrap">Mã giải:</span>
-    <span id="t-id-display" style="font-family:var(--mo);font-size:13px;color:var(--ac);font-weight:700;flex:1">—</span>
-    <input type="hidden" id="t-id">
-    <span style="font-size:11px;color:var(--tx3)">Tự động tạo khi lưu</span>
-    <div id="t-id-edit-wrap" style="display:none;flex:1">
-      <input type="text" id="t-id-edit" style="font-family:var(--mo);font-size:13px;background:transparent;border:none;outline:none;color:var(--ac);width:100%" placeholder="Mã sẽ hiển thị sau khi nhập tên">
-    </div>
-  </div>
+  <!-- Mã giải tự động - ẩn UI, giữ hidden input -->
+  <input type="hidden" id="t-id">
+  <span id="t-id-display" style="display:none"></span>
+  <div id="t-id-edit-wrap" style="display:none"><input type="text" id="t-id-edit"></div>
 
   <div class="fgrid t3">
     <div class="fg full" style="grid-column:1/-1"><label>Tên giải *</label>
@@ -998,13 +992,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <div class="fg full"><label>Nội dung thi đấu (phân cách bằng dấu phẩy)</label>
       <input type="text" id="t-noidung" placeholder="Nội dung thi đấu 1, Nội dung thi đấu 2, ...">
       <span class="hint">Liệt kê các nội dung — hiển thị trên dashboard và lọc lịch</span></div>
-    <div class="fg"><label>Trạng thái</label>
-      <select id="t-status">
-        <option value="active">🟢 Đang diễn ra</option>
-        <option value="upcoming">⏳ Sắp diễn ra</option>
-        <option value="done">✅ Đã kết thúc</option>
-      </select></div>
-    <div class="fg"><label>Ghi chú</label><input type="text" id="t-note" placeholder="Nhà tài trợ, ghi chú thêm..."></div>
     <div class="fg full" id="t-refs-wrap">
       <label>Trọng tài phân công <span style="color:var(--tx3);font-weight:400">(không bắt buộc)</span></label>
       <div id="t-refs-dropdown" style="position:relative">
@@ -1020,6 +1007,13 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       </div>
       <span class="hint">Chọn trọng tài tham gia giải đấu này</span>
     </div>
+    <div class="fg"><label>Trạng thái</label>
+      <select id="t-status">
+        <option value="active">🟢 Đang diễn ra</option>
+        <option value="upcoming">⏳ Sắp diễn ra</option>
+        <option value="done">✅ Đã kết thúc</option>
+      </select></div>
+    <div class="fg"><label>Ghi chú</label><input type="text" id="t-note" placeholder="Nhà tài trợ, ghi chú thêm..."></div>
   </div>
   <div class="mf">
     <button class="btn bh" onclick="closeMo('mo-tourn')">Hủy</button>
@@ -1830,10 +1824,12 @@ function renderBangList(giaiId, nd) {
           <span style="font-size:16px;font-weight:800;color:var(--ac)">${bang}</span>
           <span style="font-size:12px;color:var(--tx3);margin-left:10px">${matches.length} trận · ${teams.length} đội</span>
           ${liveC?`<span class="bdg bw" style="margin-left:6px">🟠 ${liveC} live</span>`:''}
+          ${doneC===matches.length&&matches.length>0?'<span class="bdg bo" style="margin-left:6px">✅ Hoàn thành</span>':doneC>0?`<span class="bdg bw" style="margin-left:6px">⚡ Đang thi đấu</span>`:'<span class="bdg bg0" style="margin-left:6px;opacity:.6">⬜ Chưa thi đấu</span>'}
         </div>
         <div style="display:flex;gap:6px">
           <button class="btn bh bsm" onclick="openBracketForNd('${esc(giaiId)}','${esc(nd)}')">🏆 Bracket</button>
           <button class="btn bp bsm" onclick="openAddBangMo('${esc(bang)}')">＋ Thêm trận</button>
+          <button class="btn bsm" style="background:rgba(239,68,68,.15);color:var(--rd);border:1px solid rgba(239,68,68,.3)" onclick="confirmDeleteBang('${esc(giaiId)}','${esc(nd)}','${esc(bang)}')">🗑 Xóa bảng</button>
         </div>
       </div>
       <!-- Progress -->
@@ -1871,7 +1867,7 @@ function renderBangList(giaiId, nd) {
                 <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
                 <td style="color:var(--ac2);font-size:11px">${m[8]||'—'}</td>
                 <td>${refCell}</td>
-                <td>${sb}</td>
+                <td style="white-space:nowrap">${done?'<span class="bdg bo" style="font-size:10px">✅ Hoàn thành</span>':live?'<span class="bdg bw" style="font-size:10px">⚡ Đang đấu</span>':'<span style="font-size:10px;color:var(--tx3)">⬜ Chưa đấu</span>'}</td>
               </tr>`;
             }).join('') : `<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--tx3)">Chưa có trận</td></tr>`}
           </tbody>
@@ -2027,6 +2023,24 @@ function roundRobinParallel(teams) {
   rounds.forEach(function(r, i){ r.round = i + 1; });
   return rounds;
 }
+// ── Xóa toàn bộ trận của một bảng ──
+async function confirmDeleteBang(giaiId, nd, bang) {
+  const matches = _M.filter(m => String(m[0]||'')===giaiId && String(m[1]||'')===nd && String(m[2]||'')===bang);
+  if (!matches.length) { toast('Bảng không có trận nào','er'); return; }
+  if (!confirm('Xóa toàn bộ ' + matches.length + ' trận của "' + bang + '"?\nHành động này không thể hoàn tác.')) return;
+  toast('⏳ Đang xóa bảng ' + bang + '...', 'in');
+  let deleted = 0, failed = 0;
+  for (const m of matches) {
+    try {
+      const d = await gPost({ action:'deleteMatch', adminCode:CODE, giai:giaiId, bang:String(m[2]||''), code:String(m[3]||'') });
+      d.ok ? deleted++ : failed++;
+    } catch(e) { failed++; }
+  }
+  toast('✅ Đã xóa ' + deleted + ' trận' + (failed ? ' (' + failed + ' lỗi)' : ''), deleted ? 'ok' : 'er');
+  await loadMatchesCache(giaiId);
+  renderBangList(giaiId, nd);
+}
+
 // Sinh prefix mã trận từ tên bảng
 // "Bảng A" → "A",  "Bảng B" → "B",  "Group C" → "C",  "Nhóm 1" → "N1"
 function bangPrefix(bangName) {
@@ -2054,6 +2068,7 @@ function openAddBangMo(existingBang) {
     const courts = (_curTourn[3]||'').split(',').map(function(c){return c.trim();}).filter(Boolean);
     sel.innerHTML = '<option value="">— Chọn sân —</option>' +
       courts.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+    // Mặc định chọn sân đầu tiên nếu có
     if(courts.length) sel.value = courts[0];
   })();
   document.getElementById('bang-round').value  = 'Vòng bảng';
@@ -2102,6 +2117,7 @@ function previewBang() {
   if (teams.length > 20){ toast('Tối đa 20 đội/bảng','er'); return; }
 
   var giaiId   = String(_curTourn[0]||'');
+  var giaiName = String(_curTourn[1]||giaiId); // Tên giải đấu (cột B trong GSheets)
   var pfx      = bangPrefix(bang);
   var schedule = roundRobinParallel(teams); // dùng index số
 
@@ -2110,12 +2126,14 @@ function previewBang() {
   var matchNo = 1;
   schedule.forEach(function(lv){
     lv.matches.forEach(function(m){
-      var teamA = teams[m.idxA - 1]; // index 1-based → 0-based
+      var teamA = teams[m.idxA - 1];
       var teamB = teams[m.idxB - 1];
-      _bangRows.push([giaiId, _curNd, bang, pfx + matchNo, teamA, '', '', teamB, court, round, '']);
+      _bangRows.push([giaiName, _curNd, bang, pfx + matchNo, teamA, '', '', teamB, court, round, '']);
       matchNo++;
     });
   });
+  // Sort theo mã trận A1→A2→...→A10 (natural sort)
+  _bangRows.sort(function(a,b){ return String(a[3]).localeCompare(String(b[3]), undefined, {numeric:true, sensitivity:'base'}); });
 
   // ── Build preview HTML ──
   document.getElementById('bang-match-count').textContent = _bangRows.length;
@@ -2332,23 +2350,28 @@ function parseCsvImport(text) {
 // Import nhiều bảng cùng lúc
 async function importMultiBang(bangMap, bangOrder) {
   if (!_curTourn || !_curNd) { toast('Chọn nội dung trước','er'); return; }
-  var giaiId = String(_curTourn[0]||'');
-  var court  = ((_curTourn[3]||'').split(',')[0]||'').trim();
-  var round  = 'Vòng bảng';
+  var giaiId   = String(_curTourn[0]||'');
+  var giaiName = String(_curTourn[1]||giaiId);
+  var court    = ((_curTourn[3]||'').split(',')[0]||'').trim();
+  var round    = 'Vòng bảng';
 
   var allRows = [];
   bangOrder.forEach(function(bangName){
     var teams    = bangMap[bangName];
     var pfx      = bangPrefix(bangName);
     var schedule = roundRobinParallel(teams);
+    var bangRows = [];
     var matchNo  = 1;
     schedule.forEach(function(lv){
       lv.matches.forEach(function(m){
-        allRows.push([giaiId, _curNd, bangName, pfx+matchNo,
+        bangRows.push([giaiName, _curNd, bangName, pfx+matchNo,
           teams[m.idxA-1], '', '', teams[m.idxB-1], court, round, '']);
         matchNo++;
       });
     });
+    // Sort theo mã trận tăng dần
+    bangRows.sort(function(a,b){ return String(a[3]).localeCompare(String(b[3]), undefined, {numeric:true, sensitivity:'base'}); });
+    allRows = allRows.concat(bangRows);
   });
 
   // Đóng modal, hiển thị progress
