@@ -825,7 +825,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <!-- Danh sách TT + phân công inline -->
       <div class="tw">
         <table class="tbl">
-          <thead><tr><th>Mã</th><th>Họ tên</th><th>Giải phân</th><th>Nội dung</th><th>Sân phân</th><th>Vòng phân</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+          <thead><tr><th>Mã</th><th>Họ tên</th><th>Giải đấu · Nội dung</th><th>Sân phân công</th><th>Vòng</th><th>Tình trạng</th><th>Hành động</th></tr></thead>
           <tbody id="asgn-tb"><tr><td colspan="8" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
         </table>
       </div>
@@ -1057,22 +1057,67 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
   </div>
 </div></div>
 
-<!-- Assign Inline Modal (sửa sân/vòng nhanh) -->
-<div class="mo" id="mo-assign"><div class="mbox">
-  <div class="mh"><div class="mtt">📌 Phân công: <span id="assign-name"></span></div><button class="mc" onclick="closeMo('mo-assign')">✕</button></div>
-  <input type="hidden" id="assign-code">
-  <div class="fgrid">
-    <div class="fg"><label>Giải đấu</label><select id="assign-giai"><option value="">— Chọn giải —</option></select></div>
-    <div class="fg"><label>Nội dung</label><input type="text" id="assign-nd" placeholder="Nội dung thi đấu (trống=tất cả)"></div>
-    <div class="fg full"><label>Sân được phân</label>
-      <input type="text" id="assign-courts" placeholder="Sân 1, Sân 2">
-      <span class="hint">⚠️ Để trống = không thấy trận nào</span></div>
-    <div class="fg full"><label>Vòng được phân</label>
-      <input type="text" id="assign-rounds" placeholder="Vòng bảng, Tứ kết">
-      <span class="hint">⚠️ Để trống = không thấy vòng nào</span></div>
+<!-- Assign Modal — phân công theo Giải + Sân -->
+<div class="mo" id="mo-assign"><div class="mbox" style="max-width:500px">
+  <div class="mh">
+    <div>
+      <div class="mtt">📌 Phân công Trọng tài</div>
+      <div style="font-size:12px;color:var(--tx3);margin-top:2px">TT: <strong id="assign-name"></strong></div>
+    </div>
+    <button class="mc" onclick="closeMo('mo-assign')">✕</button>
   </div>
+  <input type="hidden" id="assign-code">
+
+  <!-- Info box: logic phân quyền -->
+  <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11.5px;color:var(--tx2);line-height:1.6">
+    🔑 <strong>Logic phân quyền:</strong> Trọng tài chỉ thấy trận của <strong>Giải đấu</strong> được phân,
+    tại <strong>Sân</strong> được giao.<br>
+    Hai giải khác nhau có thể cùng tên sân — không bị trùng vì được phân biệt theo <strong>Giải</strong>.
+  </div>
+
+  <div class="fgrid">
+    <!-- Giải đấu: MANDATORY -->
+    <div class="fg full">
+      <label>🏆 Giải đấu <span style="color:var(--rd)">*</span>
+        <span style="font-weight:400;color:var(--tx3)">(bắt buộc — xác định phạm vi trận)</span>
+      </label>
+      <select id="assign-giai" onchange="onAssignGiaiChange()">
+        <option value="">— Chọn giải —</option>
+      </select>
+    </div>
+
+    <!-- Sân: MANDATORY -->
+    <div class="fg full">
+      <label>🏟 Sân được phân <span style="color:var(--rd)">*</span></label>
+      <div id="assign-courts-wrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 4px"></div>
+      <input type="text" id="assign-courts-input" placeholder="Nhập tên sân rồi nhấn Enter hoặc dấu phẩy…"
+        style="margin-top:4px" onkeydown="onAssignCourtKey(event)" oninput="onAssignCourtInput(event)">
+      <input type="hidden" id="assign-courts">
+      <span class="hint">⚠️ Để trống = TT không thấy trận nào</span>
+    </div>
+
+    <!-- Sân từ lịch đấu -->
+    <div class="fg full" id="assign-court-suggest-row" style="display:none">
+      <label style="color:var(--tx3)">Sân có trong lịch đấu của giải:</label>
+      <div id="assign-court-suggest" style="display:flex;flex-wrap:wrap;gap:5px;padding:4px 0"></div>
+    </div>
+
+    <!-- Nội dung: optional -->
+    <div class="fg">
+      <label>📋 Nội dung <span style="font-weight:400;color:var(--tx3)">(trống = tất cả)</span></label>
+      <select id="assign-nd"><option value="">— Tất cả nội dung —</option></select>
+    </div>
+
+    <!-- Vòng: optional -->
+    <div class="fg">
+      <label>🔄 Vòng đấu <span style="font-weight:400;color:var(--tx3)">(trống = tất cả)</span></label>
+      <input type="text" id="assign-rounds" placeholder="Vòng bảng, Tứ kết…">
+    </div>
+  </div>
+
   <div class="mf">
     <button class="btn bh" onclick="closeMo('mo-assign')">Hủy</button>
+    <button class="btn br bsm" onclick="clearAssignCourts()" title="Xóa hết sân">🗑 Xóa sân</button>
     <button class="btn bp" onclick="saveAssign()">💾 Lưu phân công</button>
   </div>
 </div></div>
@@ -3367,50 +3412,136 @@ function filterAssign() {
 }
 function renderAssign(rows) {
   const tb = document.getElementById('asgn-tb');
-  if (!rows.length) { tb.innerHTML = emptyRow(8,'👥','Không có trọng tài nào'); return; }
+  if (!rows.length) { tb.innerHTML = emptyRow(7,'👥','Không có trọng tài nào'); return; }
   tb.innerHTML = rows.map(r => {
     const st = String(r[7]||'active').toLowerCase();
     const bc = st==='manager'?'bm':st==='khóa'?'bk':'bo';
     const bl = st==='manager'?'🔵 Manager':st==='khóa'?'🔒 Khóa':'✅ Active';
     const cd = esc(r[0]), nm = esc(r[1]);
-    const hasCourts = String(r[3]||'').trim();
-    const hasRounds = String(r[4]||'').trim();
+    const courts    = String(r[3]||'').trim();
+    const rounds    = String(r[4]||'').trim();
+    const giai      = String(r[8]||'').trim();
+    const noidung   = String(r[9]||'').trim();
+    // Trạng thái phân công
+    const hasGiai   = !!giai;
+    const hasCourts = !!courts;
+    const assignOk  = hasGiai && hasCourts;
+    const statusIcon = assignOk
+      ? `<span style="color:var(--gn);font-size:11px;font-weight:700">✅ Đã phân</span>`
+      : `<span style="color:var(--rd);font-size:11px;font-weight:700">⚠️ Chưa phân</span>`;
+    const courtTags = hasCourts
+      ? courts.split(',').map(c=>`<span class="ptag" style="background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#16a34a">${c.trim()}</span>`).join('')
+      : `<span style="color:var(--rd);font-size:11px">Trống — TT không thấy trận</span>`;
+    const roundTags = rounds ? rounds.split(',').map(c=>`<span class="ptago ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--tx3);font-size:11px">Tất cả</span>';
     return `<tr>
       <td><span class="mono">${r[0]}</span></td>
       <td style="font-weight:600">${r[1]}</td>
-      <td style="font-size:11px;color:var(--ac)">${r[8]||'—'}</td>
-      <td style="font-size:11px;color:var(--tx2)">${r[9]||'—'}</td>
-      <td>${hasCourts ? String(r[3]).split(',').map(c=>`<span class="ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--rd);font-size:11px">⚠️ Trống</span>'}</td>
-      <td>${hasRounds ? String(r[4]).split(',').map(c=>`<span class="ptago ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--rd);font-size:11px">⚠️ Trống</span>'}</td>
-      <td><span class="bdg ${bc}">${bl}</span></td>
-      <td><button class="btn bp bsm" onclick="openAssignMo('${cd}','${nm}','${esc(r[3])}','${esc(r[4])}','${esc(r[8])}','${esc(r[9])}')">📌 Phân công</button></td></tr>`;
+      <td>
+        ${giai ? `<span style="font-size:11px;font-weight:700;color:var(--ac)">${giai}</span>` : '<span style="color:var(--rd);font-size:11px">⚠️ Chưa chọn giải</span>'}
+        ${noidung ? `<br><span style="font-size:10px;color:var(--tx3)">${noidung}</span>` : ''}
+      </td>
+      <td>${courtTags}</td>
+      <td>${roundTags}</td>
+      <td>${statusIcon}</td>
+      <td><button class="btn bp bsm" onclick="openAssignMo('${cd}','${nm}','${esc(courts)}','${esc(rounds)}','${esc(giai)}','${esc(noidung)}')">📌 Phân công</button></td></tr>`;
   }).join('');
 }
-function openAssignMo(code,name,courts,rounds,giai,nd) {
-  document.getElementById('assign-code').value   = code;
+// ── Assign modal helpers ─────────────────────────────────────────
+let _assignCourts = []; // danh sách sân đã chọn (dạng tag)
+
+function _renderAssignCourtTags() {
+  const wrap = document.getElementById('assign-courts-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = _assignCourts.map((c,i) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;color:#16a34a">
+      🏟 ${c}<button type="button" onclick="_removeAssignCourt(${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--rd);font-size:14px;padding:0;line-height:1">×</button>
+    </span>`
+  ).join('');
+  document.getElementById('assign-courts').value = _assignCourts.join(', ');
+}
+function _removeAssignCourt(i) { _assignCourts.splice(i,1); _renderAssignCourtTags(); }
+function _addAssignCourt(val) {
+  const parts = val.split(/[,،]/);
+  parts.forEach(p => {
+    const c = p.trim();
+    if (c && !_assignCourts.includes(c)) _assignCourts.push(c);
+  });
+  _renderAssignCourtTags();
+}
+function onAssignCourtKey(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const inp = document.getElementById('assign-courts-input');
+    if (inp.value.trim()) { _addAssignCourt(inp.value); inp.value = ''; }
+  }
+}
+function onAssignCourtInput(e) {
+  const val = e.target.value;
+  if (val.includes(',')) {
+    _addAssignCourt(val); e.target.value = '';
+  }
+}
+function clearAssignCourts() { _assignCourts = []; _renderAssignCourtTags(); }
+
+function onAssignGiaiChange() {
+  const giai = document.getElementById('assign-giai').value;
+  // Populate nội dung dropdown
+  const nds = [...new Set((_M||[]).filter(m=>!giai||String(m[0]||'')===giai).map(m=>String(m[1]||'')))].filter(Boolean).sort();
+  const ndSel = document.getElementById('assign-nd');
+  const prevND = ndSel.value;
+  ndSel.innerHTML = '<option value="">— Tất cả nội dung —</option>' + nds.map(n=>`<option value="${esc(n)}">${n}</option>`).join('');
+  if (nds.includes(prevND)) ndSel.value = prevND;
+  // Gợi ý sân từ lịch đấu
+  const courts = [...new Set((_M||[]).filter(m=>(!giai||String(m[0]||'')===giai)&&String(m[8]||'').trim()).map(m=>String(m[8]||'').trim()))].filter(Boolean).sort();
+  const sugRow = document.getElementById('assign-court-suggest-row');
+  const sugBox = document.getElementById('assign-court-suggest');
+  if (courts.length) {
+    sugRow.style.display = '';
+    sugBox.innerHTML = courts.map(c =>
+      `<button type="button" class="btn bh bsm" style="font-size:11px;padding:3px 8px"
+        onclick="_addAssignCourt('${esc(c)}')" title="Thêm ${c}">+ ${c}</button>`
+    ).join('');
+  } else { sugRow.style.display = 'none'; }
+}
+
+function openAssignMo(code, name, courts, rounds, giai, nd) {
+  document.getElementById('assign-code').value = code;
   document.getElementById('assign-name').textContent = name;
-  document.getElementById('assign-courts').value = courts;
-  document.getElementById('assign-rounds').value = rounds;
-  document.getElementById('assign-nd').value     = nd;
+  document.getElementById('assign-rounds').value = rounds || '';
+  // Init court tags
+  _assignCourts = courts ? courts.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  _renderAssignCourtTags();
+  document.getElementById('assign-courts-input').value = '';
   // Populate giải select
   const sel = document.getElementById('assign-giai');
   const tourns = ROLE==='manager' ? _T.filter(t=>String(t[0]||'')===MY_GIAI) : _T;
-  sel.innerHTML = '<option value="">— Chọn giải —</option>' + tourns.map(t=>`<option value="${t[0]}">${t[1]||t[0]}</option>`).join('');
-  sel.value = giai;
+  sel.innerHTML = '<option value="">— Chọn giải —</option>' +
+    tourns.map(t=>`<option value="${esc(String(t[0]||''))}">${t[1]||t[0]}</option>`).join('');
+  sel.value = giai || '';
+  // Trigger để load ND dropdown + gợi ý sân
+  onAssignGiaiChange();
+  const ndSel = document.getElementById('assign-nd');
+  if (nd) ndSel.value = nd;
   openMo('mo-assign');
 }
+
 async function saveAssign() {
   const code   = document.getElementById('assign-code').value;
-  const courts = document.getElementById('assign-courts').value.trim();
+  // Flush input còn lại chưa submit
+  const courtInput = document.getElementById('assign-courts-input');
+  if (courtInput.value.trim()) { _addAssignCourt(courtInput.value); courtInput.value = ''; }
+  const courts = _assignCourts.join(', ');
   const rounds = document.getElementById('assign-rounds').value.trim();
   const giai   = document.getElementById('assign-giai').value;
   const nd     = document.getElementById('assign-nd').value.trim();
+  if (!giai) { toast('⚠️ Vui lòng chọn Giải đấu','er'); return; }
   closeMo('mo-assign');
   toast('📌 Đang lưu phân công...', 'in');
   try {
     const d = await gPost({ action:'assignRef', adminCode:CODE, refCode:code, courts, rounds, giai, noidung:nd });
     if (!d.ok) toast('Lỗi: '+d.reason,'er');
-    else { toast('✅ Đã phân công','ok'); loadAssign(); }
+    else { toast(`✅ Đã phân công ${courts||'(chưa có sân)'} · ${giai}`,'ok'); loadAssign(); }
   } catch(e) { toast('Lỗi kết nối','er'); }
 }
 async function assignCourtToBang() {
