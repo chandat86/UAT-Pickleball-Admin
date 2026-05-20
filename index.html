@@ -2101,13 +2101,12 @@ function renderBangList(giaiId, nd) {
                 return uCourts.includes(matchCourt);
               }).map(u=>String(u[1]||u[0]||'')).filter(Boolean);
               const refCell = assignedRefs.length ? assignedRefs.map(n=>`<span style="font-size:10px;background:rgba(99,179,237,.15);color:var(--ac2);border-radius:4px;padding:1px 5px;white-space:nowrap">${n}</span>`).join(' ') : '<span style="color:var(--tx3);font-size:11px">—</span>';
-              // Tỉ số: ưu tiên live realtime, fallback sang điểm cuối trận
-              const ls = live ? _liveScores[lk] : null;
-              const sA = ls ? ls.scoreA : (m[5]!==''&&m[5]!==undefined ? m[5] : null);
-              const sB = ls ? ls.scoreB : (m[6]!==''&&m[6]!==undefined ? m[6] : null);
-              const sAcell = sA!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${live?'var(--or)':'var(--ac)'};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
-              const sBcell = sB!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${live?'var(--or)':'var(--ac)'};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
-              const gameTag = ls ? `<span style="font-size:9px;color:var(--or);opacity:.8;display:block;text-align:center">${ls.game||''}</span>` : '';
+              // Tỉ số: luôn lấy từ sheet Matches (m[5]/m[6]) — không dùng LiveScore
+              const sA = (m[5]!==''&&m[5]!==null&&m[5]!==undefined) ? m[5] : null;
+              const sB = (m[6]!==''&&m[6]!==null&&m[6]!==undefined) ? m[6] : null;
+              const sAcell = sA!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${done?'var(--gn)':'var(--ac)'};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
+              const sBcell = sB!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${done?'var(--gn)':'var(--ac)'};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
+              const gameTag = '';
               return `<tr${live?' style="background:rgba(245,158,11,.06);border-left:2px solid var(--or)"':''}>
                 <td style="font-family:var(--mo);color:var(--ac);font-weight:700;white-space:nowrap">${m[3]||''}</td>
                 <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${live?';color:var(--tx)':''}">${m[4]||'TBD'}</td>
