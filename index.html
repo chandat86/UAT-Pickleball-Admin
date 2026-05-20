@@ -825,8 +825,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <!-- Danh sách TT + phân công inline -->
       <div class="tw">
         <table class="tbl">
-          <thead><tr><th>Mã</th><th>Họ tên</th><th>Giải phân</th><th>Nội dung</th><th>Sân phân</th><th>Vòng phân</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
-          <tbody id="asgn-tb"><tr><td colspan="8" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
+          <thead><tr><th>Mã</th><th>Họ tên</th><th>Nội dung</th><th>Sân phân</th><th>Vòng phân</th><th>Hành động</th><th>Trạng thái</th></tr></thead>
+          <tbody id="asgn-tb"><tr><td colspan="7" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
         </table>
       </div>
 
@@ -926,8 +926,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       </div>
       <div class="tw">
         <table class="tbl">
-          <thead><tr><th>Mã</th><th>Họ tên</th><th>Vai trò</th><th>Giải phân</th><th>Nội dung</th><th>Sân</th><th>Vòng</th><th>Hết hạn</th><th>Ghi chú</th><th></th></tr></thead>
-          <tbody id="u-tb"><tr><td colspan="10" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
+          <thead><tr><th>Mã</th><th>Họ tên</th><th>Vai trò</th><th>Nội dung</th><th>Sân</th><th>Vòng</th><th>Hết hạn</th><th>Ghi chú</th><th></th></tr></thead>
+          <tbody id="u-tb"><tr><td colspan="9" style="text-align:center;padding:28px"><span class="spin"></span></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -3024,7 +3024,7 @@ function filterAssign() {
 }
 function renderAssign(rows) {
   const tb = document.getElementById('asgn-tb');
-  if (!rows.length) { tb.innerHTML = emptyRow(8,'👥','Không có trọng tài nào'); return; }
+  if (!rows.length) { tb.innerHTML = emptyRow(7,'👥','Không có trọng tài nào'); return; }
   tb.innerHTML = rows.map(r => {
     const st = String(r[7]||'active').toLowerCase();
     const bc = st==='manager'?'bm':st==='khóa'?'bk':'bo';
@@ -3035,12 +3035,11 @@ function renderAssign(rows) {
     return `<tr>
       <td><span class="mono">${r[0]}</span></td>
       <td style="font-weight:600">${r[1]}</td>
-      <td style="font-size:11px;color:var(--ac)">${r[8]||'—'}</td>
       <td style="font-size:11px;color:var(--tx2)">${r[9]||'—'}</td>
       <td>${hasCourts ? String(r[3]).split(',').map(c=>`<span class="ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--rd);font-size:11px">⚠️ Trống</span>'}</td>
       <td>${hasRounds ? String(r[4]).split(',').map(c=>`<span class="ptago ptag">${c.trim()}</span>`).join('') : '<span style="color:var(--rd);font-size:11px">⚠️ Trống</span>'}</td>
-      <td><span class="bdg ${bc}">${bl}</span></td>
-      <td><button class="btn bp bsm" onclick="openAssignMo('${cd}','${nm}','${esc(r[3])}','${esc(r[4])}','${esc(r[8])}','${esc(r[9])}')">📌 Phân công</button></td></tr>`;
+      <td><button class="btn bp bsm" onclick="openAssignMo('${cd}','${nm}','${esc(r[3])}','${esc(r[4])}','${esc(r[8])}','${esc(r[9])}')">📌 Phân công</button></td>
+      <td><span class="bdg ${bc}">${bl}</span></td></tr>`;
   }).join('');
 }
 function openAssignMo(code,name,courts,rounds,giai,nd) {
@@ -3150,6 +3149,15 @@ function filterMatches() {
     }
     if (q) return [r[0],r[1],r[2],r[3],r[4],r[7],r[8]].some(v=>String(v||'').toLowerCase().includes(q));
     return true;
+  });
+  // Sắp xếp tăng dần: theo bảng rồi theo mã (A1 < A2 < ... < A10)
+  rows.sort((a,b) => {
+    const bangCmp = String(a[2]||'').localeCompare(String(b[2]||''), 'vi');
+    if (bangCmp !== 0) return bangCmp;
+    const codeA = String(a[3]||''), codeB = String(b[3]||'');
+    const prefA = codeA.replace(/\d+$/,''), prefB = codeB.replace(/\d+$/,'');
+    if (prefA !== prefB) return prefA.localeCompare(prefB, 'vi');
+    return (parseInt(codeA.match(/\d+$/)?.[0]||0)) - (parseInt(codeB.match(/\d+$/)?.[0]||0));
   });
   renderMatches(rows);
 }
@@ -3420,7 +3428,7 @@ function filterUsers() {
 }
 function renderUsers(rows) {
   const tb = document.getElementById('u-tb');
-  if (!rows.length) { tb.innerHTML = emptyRow(10,'👥','Không có trọng tài'); return; }
+  if (!rows.length) { tb.innerHTML = emptyRow(9,'👥','Không có trọng tài'); return; }
   tb.innerHTML = rows.map(r => {
     const st=String(r[7]||'active').toLowerCase();
     const bc=st==='admin'?'ba':st==='manager'?'bm':st==='khóa'?'bk':'bo';
@@ -3434,7 +3442,6 @@ function renderUsers(rows) {
       <td><span class="mono">${r[0]}</span></td>
       <td style="font-weight:600">${r[1]}</td>
       <td><span class="bdg ${bc}">${bl}</span></td>
-      <td style="font-size:11px;color:var(--ac)">${r[8]||'—'}</td>
       <td style="font-size:11px;color:var(--tx2)">${r[9]||'—'}</td>
       <td>${ct}</td><td>${rt}</td>
       <td style="font-size:12px;color:var(--tx3)">${exp}</td>
