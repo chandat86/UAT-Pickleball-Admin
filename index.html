@@ -2101,12 +2101,20 @@ function renderBangList(giaiId, nd) {
                 return uCourts.includes(matchCourt);
               }).map(u=>String(u[1]||u[0]||'')).filter(Boolean);
               const refCell = assignedRefs.length ? assignedRefs.map(n=>`<span style="font-size:10px;background:rgba(99,179,237,.15);color:var(--ac2);border-radius:4px;padding:1px 5px;white-space:nowrap">${n}</span>`).join(' ') : '<span style="color:var(--tx3);font-size:11px">—</span>';
-              // Tỉ số: luôn lấy từ sheet Matches (m[5]/m[6]) — không dùng LiveScore
-              const sA = (m[5]!==''&&m[5]!==null&&m[5]!==undefined) ? m[5] : null;
-              const sB = (m[6]!==''&&m[6]!==null&&m[6]!==undefined) ? m[6] : null;
-              const sAcell = sA!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${done?'var(--gn)':'var(--ac)'};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
-              const sBcell = sB!==null ? `<span style="font-family:var(--mo);font-weight:900;color:${done?'var(--gn)':'var(--ac)'};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
-              const gameTag = '';
+              // Tỉ số: ưu tiên Matches (m[5]/m[6]), nếu trận live thì lấy live realtime (không hiện Game)
+              let sA, sB;
+              if (live && _liveScores[lk]) {
+                // Đang live: lấy realtime từ LiveScore (không hiện "Game X")
+                sA = _liveScores[lk].scoreA;
+                sB = _liveScores[lk].scoreB;
+              } else {
+                // Đã hoàn thành hoặc chưa đấu: lấy từ Matches
+                sA = (m[5]!==''&&m[5]!==null&&m[5]!==undefined) ? Number(m[5]) : null;
+                sB = (m[6]!==''&&m[6]!==null&&m[6]!==undefined) ? Number(m[6]) : null;
+              }
+              const sAcell = sA!==null&&sA!==undefined ? `<span style="font-family:var(--mo);font-weight:900;color:${done?'var(--gn)':live?'var(--or)':'var(--ac)'};font-size:13px">${sA}</span>` : '<span style="color:var(--tx3)">—</span>';
+              const sBcell = sB!==null&&sB!==undefined ? `<span style="font-family:var(--mo);font-weight:900;color:${done?'var(--gn)':live?'var(--or)':'var(--ac)'};font-size:13px">${sB}</span>` : '<span style="color:var(--tx3)">—</span>';
+              const gameTag = ''; // Không hiển thị "Game X" trong bảng quản lý
               return `<tr${live?' style="background:rgba(245,158,11,.06);border-left:2px solid var(--or)"':''}>
                 <td style="font-family:var(--mo);color:var(--ac);font-weight:700;white-space:nowrap">${m[3]||''}</td>
                 <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${live?';color:var(--tx)':''}">${m[4]||'TBD'}</td>
@@ -2970,7 +2978,17 @@ async function loadMatchesCache(giaiId='') {
     } else {
       _M = normalizeMatchRows(md.rows?.slice(1)||[]);
     }
-    _dK = new Set((rd.rows?.slice(1)||[]).map(r=>`${r[1]}|${r[3]}|${r[4]}`));
+    // _dK: build cả theo giaiName và giaiId để match được dù m[0] là tên hay mã
+    const dkRows = rd.rows?.slice(1)||[];
+    const dkSet  = new Set();
+    dkRows.forEach(r => {
+      const g = String(r[1]||''), bg = String(r[3]||''), cd = String(r[4]||'');
+      dkSet.add(`${g}|${bg}|${cd}`); // tên giải (từ KetQua)
+      // Thêm cả mã giải để fallback
+      const t = _T.find(t => String(t[1]||'') === g);
+      if (t) dkSet.add(`${String(t[0]||'')}|${bg}|${cd}`);
+    });
+    _dK = dkSet;
     _lK = new Set((ld.rows?.slice(1)||[]).map(r=>String(r[0]||'')));
   } catch(e) { console.error('loadMatchesCache error', e); }
 }
@@ -4098,8 +4116,17 @@ async function loadMatches() {
       gGet({ action:'results', giai }),
       gGet({ action:'live', code:'all', giai })
     ]);
-    _M = md.rows?.slice(1) || [];
-    _dK = new Set((rd.rows?.slice(1)||[]).map(r => `${r[1]}|${r[3]}|${r[4]}`));
+    _M = normalizeMatchRows(md.rows?.slice(1) || []);
+    // _dK: thêm cả tên giải + mã giải để match đúng
+    const dkRows2 = rd.rows?.slice(1)||[];
+    const dkSet2  = new Set();
+    dkRows2.forEach(r => {
+      const g = String(r[1]||''), bg = String(r[3]||''), cd = String(r[4]||'');
+      dkSet2.add(`${g}|${bg}|${cd}`);
+      const t2 = _T.find(t => String(t[1]||'') === g);
+      if (t2) dkSet2.add(`${String(t2[0]||'')}|${bg}|${cd}`);
+    });
+    _dK = dkSet2;
     _lK = new Set((ld.rows?.slice(1)||[]).map(r => String(r[0]||'')));
     // Cập nhật dropdown ND
     onMGiaiChange(true);
