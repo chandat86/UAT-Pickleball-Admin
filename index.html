@@ -2301,29 +2301,43 @@ function clearDashFilter() {
   loadDash();
 }
 
-// Render bảng live mini
+// Render bảng live mini (tỉ số realtime)
 function _renderLiveTable(matches) {
-  return `<div class="tw" style="margin-top:8px"><table class="tbl" style="font-size:12px"><thead><tr>
-    <th>Bảng·Mã</th><th>Đội A</th><th style="text-align:center">A</th>
-    <th style="text-align:center">B</th><th>Đội B</th><th>Game</th><th>Sân</th>
+  if (!matches.length) return '<div class="empty"><div class="ei">📡</div><p>Không có trận đang thi đấu</p></div>';
+  return `<div class="tw"><table class="tbl" style="font-size:12px"><thead><tr>
+    <th style="white-space:nowrap">Bảng · Mã</th>
+    <th>Đội A</th>
+    <th style="text-align:center;width:48px">A</th>
+    <th style="text-align:center;width:48px">B</th>
+    <th>Đội B</th>
+    <th style="text-align:center;white-space:nowrap">Game</th>
+    <th style="white-space:nowrap">Sân</th>
   </tr></thead><tbody>${matches.map(m=>{
-    const lk=`${m[1]}|${m[2]}|${m[3]}`;
-    const ls=_liveScores[lk]||{};
-    return `<tr style="background:rgba(245,158,11,.06);border-left:2px solid var(--or)">
-      <td><span class="mono" style="color:var(--ac)">${m[2]||''}</span><span style="color:var(--tx3)">·${m[3]||''}</span></td>
-      <td style="font-weight:600">${m[4]||'TBD'}</td>
-      <td style="text-align:center;font-family:var(--mo);font-weight:900;color:var(--or);font-size:14px">${ls.scoreA??'—'}</td>
-      <td style="text-align:center;font-family:var(--mo);font-weight:900;color:var(--or);font-size:14px">${ls.scoreB??'—'}</td>
-      <td style="font-weight:600">${m[7]||'TBD'}</td>
-      <td><span class="bdg bw" style="font-size:10px">${ls.game||'G1'}</span></td>
-      <td style="font-size:11px;color:var(--ac2)">${m[8]||'—'}</td>
+    const lk = `${m[1]}|${m[2]}|${m[3]}`;
+    const ls = _liveScores[lk] || {};
+    const sA = ls.scoreA ?? '—';
+    const sB = ls.scoreB ?? '—';
+    const leadA = (typeof sA==='number' && typeof sB==='number') ? sA>sB : false;
+    const leadB = (typeof sA==='number' && typeof sB==='number') ? sB>sA : false;
+    return `<tr style="background:rgba(245,158,11,.05);border-left:3px solid var(--or)">
+      <td style="white-space:nowrap">
+        <span style="font-weight:700;color:var(--ac2)">${m[2]||''}</span>
+        <span style="color:var(--tx3);font-size:11px"> · </span>
+        <span class="mono" style="color:var(--ac)">${m[3]||''}</span>
+      </td>
+      <td style="font-weight:${leadA?700:500};color:${leadA?'var(--tx)':'var(--tx2)'};max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:16px;color:${leadA?'var(--gn)':'var(--or)'}">${sA}</td>
+      <td style="text-align:center;font-family:var(--mo);font-weight:900;font-size:16px;color:${leadB?'var(--gn)':'var(--or)'}">${sB}</td>
+      <td style="font-weight:${leadB?700:500};color:${leadB?'var(--tx)':'var(--tx2)'};max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
+      <td style="text-align:center"><span class="bdg bw" style="font-size:10px">${ls.game||'Game 1'}</span></td>
+      <td style="font-size:11px;color:var(--ac2);white-space:nowrap">${m[8]||'—'}</td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
-// Render bảng trận đầy đủ (đã lọc)
+// Render bảng trận đầy đủ (đã lọc) — có nút thu gọn + live score trong row
+let _collapsedBangs = new Set(); // Bảng đang thu gọn
 function _renderMatchTable(matches) {
-  // Group by bang để dễ đọc
   const byBang = {};
   matches.forEach(m => {
     const bg = m[2]||'—';
@@ -2332,40 +2346,90 @@ function _renderMatchTable(matches) {
   });
   const sections = Object.keys(byBang).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(bang => {
     const ms = byBang[bang];
-    const dC=ms.filter(m=>isMatchDone(m)).length, lC=ms.filter(m=>!isMatchDone(m)&&_lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
+    const dC = ms.filter(m=>isMatchDone(m)).length;
+    const lC = ms.filter(m=>!isMatchDone(m)&&_lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
+    const pC = ms.length-dC-lC;
+    const pct = ms.length ? Math.round(dC/ms.length*100) : 0;
+    const collapsed = _collapsedBangs.has(bang);
+    const bangId = `bang-section-${bang.replace(/[^a-zA-Z0-9]/g,'_')}`;
     const rows = ms.map(m=>{
       const done=isMatchDone(m), lk=`${m[1]}|${m[2]}|${m[3]}`, live=!done&&_lK.has(lk);
       let sA,sB;
       if(live&&_liveScores[lk]){sA=_liveScores[lk].scoreA;sB=_liveScores[lk].scoreB;}
       else{const fs=getFinalScore(m);sA=fs?.scoreA??null;sB=fs?.scoreB??null;}
       const sc=done?'var(--gn)':live?'var(--or)':'var(--tx3)';
-      const sAc=sA!==null?`<b style="font-family:var(--mo);color:${sc};font-size:13px">${sA}</b>`:'<span style="color:var(--tx3)">—</span>';
-      const sBc=sB!==null?`<b style="font-family:var(--mo);color:${sc};font-size:13px">${sB}</b>`:'<span style="color:var(--tx3)">—</span>';
-      const st=done?'<span class="bdg bo" style="font-size:10px">✅ Xong</span>':live?'<span class="bdg bw" style="font-size:10px">⚡Live</span>':'<span style="color:var(--tx3);font-size:11px">⬜ Chưa</span>';
-      const rs=done?'background:rgba(34,197,94,.04)':live?'background:rgba(245,158,11,.06);border-left:2px solid var(--or)':'';
-      return `<tr${rs?` style="${rs}"`:''}><td style="font-family:var(--mo);color:var(--ac);font-weight:700">${m[3]||''}</td>
-        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[4]||'TBD'}</td>
-        <td style="text-align:center">${sAc}</td><td style="text-align:center">${sBc}</td>
-        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m[7]||'TBD'}</td>
-        <td style="font-size:11px;color:var(--ac2)">${m[8]||'—'}</td><td>${st}</td></tr>`;
+      const sAc=sA!==null?`<b style="font-family:var(--mo);color:${sc};font-size:14px">${sA}</b>`:'<span style="color:var(--tx3)">—</span>';
+      const sBc=sB!==null?`<b style="font-family:var(--mo);color:${sc};font-size:14px">${sB}</b>`:'<span style="color:var(--tx3)">—</span>';
+      const st = done
+        ? '<span class="bdg bo" style="font-size:10px;white-space:nowrap">✅ Xong</span>'
+        : live
+          ? '<span class="bdg bw" style="font-size:10px;white-space:nowrap;animation:pulse 1s infinite">⚡ Live</span>'
+          : '<span style="color:var(--tx3);font-size:11px;white-space:nowrap">⬜ Chưa</span>';
+      const rs=done?'background:rgba(34,197,94,.04)':live?'background:rgba(245,158,11,.06);border-left:3px solid var(--or)':'';
+      return `<tr${rs?` style="${rs}"`:''}
+        ><td style="font-family:var(--mo);color:var(--ac);font-weight:700;white-space:nowrap">${m[3]||''}</td>
+        <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${m[4]||''}">${m[4]||'TBD'}</td>
+        <td style="text-align:center;padding:6px 8px">${sAc}</td>
+        <td style="text-align:center;padding:6px 8px">${sBc}</td>
+        <td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${m[7]||''}">${m[7]||'TBD'}</td>
+        <td style="font-size:11px;color:var(--ac2);white-space:nowrap">${m[8]||'—'}</td>
+        <td style="white-space:nowrap">${st}</td>
+      </tr>`;
     }).join('');
-    return `<div style="margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg4);border-radius:8px 8px 0 0;border:1px solid var(--bdr);border-bottom:none">
-        <span style="font-weight:800;color:var(--ac2)">${bang}</span>
+
+    return `<div style="margin-bottom:12px;border:1px solid var(--bdr);border-radius:10px;overflow:hidden" id="${bangId}">
+      <!-- Bang header — click để thu gọn -->
+      <div onclick="_toggleBang('${bang.replace(/'/g,"&#39;")}','${bangId}')"
+        style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--bg4);cursor:pointer;user-select:none;
+          border-bottom:${collapsed?'none':'1px solid var(--bdr)'}">
+        <span style="font-weight:800;color:var(--ac2);font-size:14px">Bảng ${bang}</span>
         <span style="font-size:11px;color:var(--tx3)">${ms.length} trận</span>
-        ${lC?`<span class="bdg bw" style="font-size:10px">⚡${lC}</span>`:''}
-        ${dC?`<span class="bdg bo" style="font-size:10px">✅${dC}</span>`:''}
-        <span class="bdg bg0" style="font-size:10px">⬜${ms.length-dC-lC}</span>
+        ${lC>0?`<span class="bdg bw" style="font-size:10px">⚡ ${lC} live</span>`:''}
+        ${dC>0?`<span class="bdg bo" style="font-size:10px">✅ ${dC}</span>`:''}
+        ${pC>0?`<span class="bdg bg0" style="font-size:10px;opacity:.8">⬜ ${pC}</span>`:''}
+        <div style="flex:1;margin:0 8px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${pct===100?'var(--gn)':'linear-gradient(90deg,var(--ac),var(--gn))'};border-radius:3px"></div>
+        </div>
+        <span style="font-size:11px;color:var(--tx3)">${pct}%</span>
+        <span style="font-size:14px;color:var(--tx3);transition:transform .2s;transform:rotate(${collapsed?'-90deg':'0deg'})" id="arrow-${bangId}">▾</span>
       </div>
-      <div class="tw" style="border-radius:0 0 8px 8px;border:1px solid var(--bdr)">
-        <table class="tbl" style="font-size:12px">
-          <thead><tr><th>Mã</th><th>Đội A</th><th style="text-align:center">A</th><th style="text-align:center">B</th><th>Đội B</th><th>Sân</th><th>Trạng thái</th></tr></thead>
+      <!-- Bang body — ẩn khi thu gọn -->
+      <div id="body-${bangId}" style="display:${collapsed?'none':'block'}">
+        <table class="tbl" style="font-size:12px;width:100%;border-radius:0">
+          <thead><tr>
+            <th style="white-space:nowrap">Mã</th>
+            <th>Đội A</th>
+            <th style="text-align:center;width:48px">A</th>
+            <th style="text-align:center;width:48px">B</th>
+            <th>Đội B</th>
+            <th style="white-space:nowrap">Sân</th>
+            <th style="white-space:nowrap">Trạng thái</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
     </div>`;
   });
-  return sections.join('');
+  return `<div>${sections.join('')}</div>`;
+}
+
+function _toggleBang(bang, bangId) {
+  const body  = document.getElementById('body-' + bangId);
+  const arrow = document.getElementById('arrow-' + bangId);
+  const hdr   = body?.previousElementSibling;
+  if (!body) return;
+  const isCollapsed = body.style.display === 'none';
+  if (isCollapsed) {
+    body.style.display = 'block';
+    if(arrow) arrow.style.transform = 'rotate(0deg)';
+    if(hdr)   hdr.style.borderBottom = '1px solid var(--bdr)';
+    _collapsedBangs.delete(bang);
+  } else {
+    body.style.display = 'none';
+    if(arrow) arrow.style.transform = 'rotate(-90deg)';
+    if(hdr)   hdr.style.borderBottom = 'none';
+    _collapsedBangs.add(bang);
+  }
 }
 
 // Render recent từ GAS data
@@ -2447,6 +2511,25 @@ function onDashNdChange() {
 }
 
 // Stat modal khi click thẻ
+// Scroll đến khu vực live + highlight
+function _scrollToLive() {
+  // Nếu đang ở view filter, scroll đến dash-live-card
+  const liveCard = document.getElementById('dash-live-card');
+  const liveWrapAll = document.getElementById('live-wrap');
+  const target = (liveCard && liveCard.style.display !== 'none') ? liveCard : liveWrapAll;
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Highlight animation
+    target.style.transition = 'box-shadow .3s';
+    target.style.boxShadow = '0 0 0 3px var(--or)';
+    setTimeout(() => { target.style.boxShadow = ''; }, 1800);
+  } else {
+    // Nếu không có live, vẫn scroll xuống dash-matches-wrap
+    const mw = document.getElementById('dash-matches-wrap') || document.getElementById('dash-view-filter');
+    if(mw) mw.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+}
+
 function showStatMo(type) {
   if (!_dashData) { toast('Làm mới dashboard trước', 'er'); return; }
   const s = _dashData.summary || {};
@@ -2465,18 +2548,9 @@ function showStatMo(type) {
           <td><div class="prb" style="width:80px;display:inline-block"><div class="prf" style="width:${c.pct}%"></div></div> ${c.pct}%</td></tr>`).join('')
         }</tbody></table>`;
   } else if (type === 'live') {
-    title = `🟠 Đang thi đấu: ${s.liveMatches||0}`;
-    const live = _dashData.liveDetail || [];
-    html = !live.length ? '<div class="empty"><div class="ei">📡</div><p>Không có trận đang thi đấu</p></div>'
-      : `<table class="tbl"><thead><tr><th>Giải</th><th>Mã</th><th>Đội A</th><th>A</th><th>B</th><th>Đội B</th><th>Game</th><th>Cập nhật</th></tr></thead><tbody>${
-        live.map(r => { const[,bang,code]=(r.key||'').split('|'); return `<tr>
-          <td style="font-size:11px;color:var(--ac)">${r.giai}</td>
-          <td><span class="mono">${code||'—'}</span><br><small style="color:var(--tx3)">${bang||''}</small></td>
-          <td style="font-weight:600">${r.teamA}</td><td class="score">${r.scoreA}</td><td class="score">${r.scoreB}</td>
-          <td style="font-weight:600">${r.teamB}</td>
-          <td><span class="bdg bw">G${r.game||1}</span></td>
-          <td style="font-size:11px;color:var(--tx3)">${r.updated||''}</td></tr>`; }).join('')
-        }</tbody></table>`;
+    // Không popup — scroll xuống khu vực live trong dashboard
+    _scrollToLive();
+    return;
   } else if (type === 'done') {
     title = `✅ Hoàn thành: ${s.doneMatches||0}`;
     const rec = _dashData.recentResults || [];
