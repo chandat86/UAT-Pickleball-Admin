@@ -890,10 +890,9 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <select id="bxh-nd" onchange="onBxhNdChange()" style="min-width:140px"><option value="">Tất cả nội dung</option></select>
         <span class="farrow">›</span>
         <select id="bxh-bang" onchange="loadStandings()" style="min-width:110px"><option value="">Tất cả bảng</option></select>
-        <button class="rfbtn" onclick="loadStandings()" style="margin-left:auto">↻ Làm mới</button>
       </div>
       <div id="bxh-label" style="font-size:12px;color:var(--tx3);padding:4px 0 8px;display:none"></div>
-      <div id="bxh-wrap"><div class="empty"><div class="ei">📈</div><p>Chọn giải và nội dung để xem BXH</p></div></div>
+      <div id="bxh-wrap"><div class="empty"><div class="ei">📈</div><p>Chọn giải đấu để xem BXH</p></div></div>
     </div>
 
     <!-- ══ PHÂN CÔNG TRỌNG TÀI ══ -->
@@ -4116,49 +4115,88 @@ function onBxhNdChange() {
 }
 async function loadStandings() {
   const giaiId   = document.getElementById('bxh-giai').value;
-  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const giaiName = _resolveGiaiName(giaiId);
   const nd       = document.getElementById('bxh-nd').value;
   const bang     = document.getElementById('bxh-bang').value;
   const wrap     = document.getElementById('bxh-wrap');
-  // Cập nhật label bxh
-  const lbl = document.getElementById('bxh-label');
-  if (lbl) {
-    const parts = [giaiName, nd, bang].filter(Boolean);
-    lbl.textContent = parts.length ? `Đang xem: ${parts.join(' › ')}` : '';
-    lbl.style.display = parts.length ? '' : 'none';
-  }
-  if (!giaiName && !nd) {
+  const lbl      = document.getElementById('bxh-label');
+
+  // Label hiện tại
+  const parts = [giaiName, nd, bang].filter(Boolean);
+  if (lbl) { lbl.textContent = parts.length ? parts.join(' › ') : ''; lbl.style.display = parts.length ? '' : 'none'; }
+
+  if (!giaiName) {
     wrap.innerHTML = '<div class="empty"><div class="ei">📈</div><p>Chọn giải đấu để xem BXH</p></div>'; return;
   }
+
   wrap.innerHTML = '<div class="empty"><span class="spin"></span></div>';
   try {
-    const d = await gGet({ action: 'standings', giai: giaiName || giaiId, nd, bang });
-    if (!d.ok) { wrap.innerHTML = '<div class="empty"><div class="ei">⚠️</div><p>'+d.reason+'</p></div>'; return; }
-    const rows = d.standings || [];
-    if (!rows.length) {
-      const hint = nd ? (bang ? `Bảng ${bang} chưa có kết quả` : `${nd} chưa có kết quả`) : 'Chưa có kết quả';
+    const d = await gGet({ action:'standings', giai: giaiName, nd, bang });
+    if (!d.ok) { wrap.innerHTML = `<div class="empty"><div class="ei">⚠️</div><p>${d.reason||'Lỗi'}</p></div>`; return; }
+
+    const groups = d.groups || [];
+    if (!groups.length || !groups.some(g => g.standings?.length)) {
+      const hint = nd ? `${nd}${bang?' · '+bang:''} — chưa có kết quả` : `${giaiName} — chưa có kết quả`;
       wrap.innerHTML = `<div class="empty"><div class="ei">📊</div><p>${hint}</p></div>`; return;
     }
-    wrap.innerHTML = `<div style="font-size:12px;color:var(--tx3);margin-bottom:8px">
-        ${giai} › ${nd} ${bang ? '› '+bang : ''} — ${rows.length} đội
+
+    // Render từng bảng
+    wrap.innerHTML = groups.filter(g => g.standings?.length).map(g => _renderBxhGroup(g, giaiName, nd)).join('');
+  } catch(e) {
+    console.error('[loadStandings]', e);
+    wrap.innerHTML = `<div class="empty"><div class="ei">⚠️</div><p>Lỗi kết nối — thử lại</p></div>`;
+  }
+}
+
+function _renderBxhGroup(g, giaiName, filterNd) {
+  const rows = g.standings || [];
+  const bangLabel = [filterNd||g.nd, g.bang].filter(Boolean).join(' · ');
+  const doneC = rows.length;
+  return `<div style="margin-bottom:18px">
+    <!-- Group header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;
+      background:var(--bg4);border:1px solid var(--bdr);border-bottom:none;border-radius:10px 10px 0 0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-weight:800;color:var(--ac2);font-size:14px">${esc(g.bang)}</span>
+        <span style="font-size:11px;color:var(--tx3)">${bangLabel?'· '+bangLabel:''} · ${doneC} đội</span>
       </div>
-      <table class="bxh">
-        <thead><tr><th>#</th><th>Đội</th><th>Trận</th><th>Thắng</th><th>Thua</th><th>Điểm PB</th><th style="text-align:right">Điểm PB ĐA</th><th style="text-align:right">Điểm PB ĐB</th><th style="text-align:right">Hiệu số</th><th>Điểm</th></tr></thead>
-        <tbody>${rows.map(r => `<tr class="${r.rank===1?'rank1':r.rank===2?'rank2':r.rank===3?'rank3':''}">
-          <td style="font-weight:900;color:${r.rank===1?'var(--or)':r.rank===2?'var(--tx2)':r.rank===3?'#b45309':'var(--tx3)'}">
-            ${r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank}</td>
-          <td style="font-weight:700">${r.team}</td>
-          <td class="mono" style="color:var(--tx2)">${r.played}</td>
-          <td style="color:var(--gn);font-weight:700">${r.won}</td>
-          <td style="color:var(--rd)">${r.lost}</td>
-          <td class="mono" style="color:var(--ac);font-weight:900">${r.pts}</td>
-          <td style="text-align:right;color:var(--gn)">${r.ptsFor}</td>
-          <td style="text-align:right;color:var(--rd)">${r.ptsAgainst}</td>
-          <td style="text-align:right;font-weight:700;color:${r.pDiff>0?'var(--gn)':r.pDiff<0?'var(--rd)':'var(--tx3)'}">${r.pDiff>0?'+'+r.pDiff:r.pDiff}</td>
-          <td style="font-family:var(--mo);font-size:14px;font-weight:900;color:var(--ac)">${r.pts}</td>
-        </tr>`).join('')}</tbody>
-      </table>`;
-  } catch(e) { wrap.innerHTML = '<div class="empty"><div class="ei">⚠️</div><p>Lỗi kết nối</p></div>'; }
+    </div>
+    <!-- BXH table -->
+    <div class="tw" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
+      <table class="bxh" style="width:100%;border-radius:0">
+        <thead><tr>
+          <th style="width:40px;text-align:center">#</th>
+          <th style="text-align:left">Đội thi đấu</th>
+          <th style="text-align:center;width:50px" title="Số trận">T</th>
+          <th style="text-align:center;width:50px" title="Thắng">W</th>
+          <th style="text-align:center;width:50px" title="Thua">L</th>
+          <th style="text-align:center;width:60px" title="Điểm ghi">PB+</th>
+          <th style="text-align:center;width:60px" title="Điểm thủng">PB−</th>
+          <th style="text-align:center;width:60px" title="Hiệu số">±</th>
+          <th style="text-align:center;width:60px" title="Điểm tích lũy">Điểm</th>
+        </tr></thead>
+        <tbody>${rows.map(r => {
+          const medal = r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'';
+          const rankColor = r.rank===1?'var(--or)':r.rank===2?'#94a3b8':r.rank===3?'#b45309':'var(--tx3)';
+          const pDiffStr  = r.pDiff > 0 ? '+'+r.pDiff : String(r.pDiff);
+          const pDiffColor = r.pDiff>0?'var(--gn)':r.pDiff<0?'var(--rd)':'var(--tx3)';
+          const rowClass  = r.rank===1?'rank1':r.rank===2?'rank2':r.rank===3?'rank3':'';
+          return `<tr class="${rowClass}">
+            <td style="text-align:center;font-weight:900;color:${rankColor};font-size:15px">${medal||r.rank}</td>
+            <td style="font-weight:700;font-size:13px">${esc(r.team)}</td>
+            <td style="text-align:center;font-family:var(--mo);color:var(--tx2)">${r.played}</td>
+            <td style="text-align:center;font-weight:700;color:var(--gn)">${r.won}</td>
+            <td style="text-align:center;color:var(--rd)">${r.lost}</td>
+            <td style="text-align:center;font-family:var(--mo);color:var(--gn)">${r.ptsFor}</td>
+            <td style="text-align:center;font-family:var(--mo);color:var(--rd)">${r.ptsAgainst}</td>
+            <td style="text-align:center;font-weight:700;color:${pDiffColor}">${pDiffStr}</td>
+            <td style="text-align:center;font-family:var(--mo);font-size:15px;font-weight:900;color:var(--ac)">${r.pts}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--tx3);padding:5px 2px">T=Trận · W=Thắng · L=Thua · PB+=Điểm ghi · PB−=Điểm thủng · ±=Hiệu số · Điểm: Thắng 2pt, Thua 0pt</div>
+  </div>`;
 }
 
 // ════════════════════════════════════════════════════════════════
