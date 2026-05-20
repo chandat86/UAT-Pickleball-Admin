@@ -1005,6 +1005,21 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <option value="done">✅ Đã kết thúc</option>
       </select></div>
     <div class="fg"><label>Ghi chú</label><input type="text" id="t-note" placeholder="Nhà tài trợ, ghi chú thêm..."></div>
+    <div class="fg full" id="t-refs-wrap">
+      <label>Trọng tài phân công <span style="color:var(--tx3);font-weight:400">(không bắt buộc)</span></label>
+      <div id="t-refs-dropdown" style="position:relative">
+        <div id="t-refs-display" onclick="toggleRefsDropdown()" style="cursor:pointer;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;min-height:38px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+          <span id="t-refs-placeholder" style="color:var(--tx3);font-size:13px">Click để chọn trọng tài...</span>
+        </div>
+        <div id="t-refs-list" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;overflow-y:auto;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;margin-top:4px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+          <div style="padding:8px 10px;border-bottom:1px solid var(--bdr)">
+            <input id="t-refs-search" type="text" placeholder="🔍 Tìm tên trọng tài..." oninput="filterRefsDropdown()" style="width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:12px;color:var(--tx)">
+          </div>
+          <div id="t-refs-options"></div>
+        </div>
+      </div>
+      <span class="hint">Chọn trọng tài tham gia giải đấu này</span>
+    </div>
   </div>
   <div class="mf">
     <button class="btn bh" onclick="closeMo('mo-tourn')">Hủy</button>
@@ -1224,7 +1239,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <input type="text" id="bang-name" placeholder="Bảng A">
       <span class="hint">A, B, C... hoặc tùy ý. Mã trận sẽ là A1, A2...</span></div>
     <div class="fg" style="margin-bottom:0"><label>Sân thi đấu</label>
-      <input type="text" id="bang-court" placeholder="Sân 1"></div>
+      <select id="bang-court"><option value="">— Chọn sân —</option></select></div>
     <div class="fg" style="margin-bottom:0"><label>Vòng đấu</label>
       <input type="text" id="bang-round" placeholder="Vòng bảng" value="Vòng bảng"></div>
     <div class="fg" style="margin-bottom:0"><label>Quy tắc điểm</label>
@@ -1537,7 +1552,7 @@ async function loadDash() {
     _dashData = d;
     // Populate giải dropdown nếu có data
     if (d.tournaments?.length) {
-      _T = d.tournaments.map(t => [t.id,t.name,t.venue,t.courts,t.startDate,t.endDate,t.status,t.note]);
+      _T = d.tournaments.map(t => [t.id,t.name,t.venue,t.courts,t.startDate,t.endDate,t.status,t.note,t.refs||[]]);
       populateTournamentDropdowns();
     }
     const s = d.summary || {};
@@ -2017,7 +2032,14 @@ function openAddBangMo(existingBang) {
   document.getElementById('bang-mo-title').textContent =
     existingBang ? ('Thêm trận vào ' + existingBang) : '＋ Thêm bảng đấu';
   document.getElementById('bang-name').value   = existingBang || '';
-  document.getElementById('bang-court').value  = ((_curTourn[3]||'').split(',')[0]||'').trim();
+  // Populate sân dropdown từ danh sách sân của giải
+  (function(){
+    const sel = document.getElementById('bang-court');
+    const courts = (_curTourn[3]||'').split(',').map(function(c){return c.trim();}).filter(Boolean);
+    sel.innerHTML = '<option value="">— Chọn sân —</option>' +
+      courts.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+    if(courts.length) sel.value = courts[0];
+  })();
   document.getElementById('bang-round').value  = 'Vòng bảng';
   document.getElementById('bang-rule').value   = '11';
   document.getElementById('bang-teams').value  = '';
@@ -2754,9 +2776,107 @@ function openTournMo(pre=null) {
   document.getElementById('t-end').value         = pre?.end||'';
   document.getElementById('t-status').value      = pre?.status||'active';
   document.getElementById('t-note').value        = pre?.note||'';
+  initRefsDropdown(pre?.refs||[]);
   document.getElementById('t-save').disabled     = false;
+  // Tải danh sách trọng tài nếu chưa có
+  if (!_U.length) {
+    gGet({ action:'getUsers', adminCode:CODE }).then(d => {
+      if (d?.ok) { _U = d.rows?.slice(1)||[]; renderRefsOptions(''); renderRefsDisplay(); }
+    }).catch(()=>{});
+  }
   openMo('mo-tourn');
 }
+// ── Trọng tài dropdown cho modal tạo giải ──
+let _selectedRefs = [];
+function initRefsDropdown(preSelected) {
+  _selectedRefs = Array.isArray(preSelected) ? [...preSelected] : [];
+  renderRefsDisplay();
+  renderRefsOptions('');
+  document.getElementById('t-refs-list').style.display = 'none';
+  document.getElementById('t-refs-search').value = '';
+}
+function toggleRefsDropdown() {
+  const list = document.getElementById('t-refs-list');
+  const isOpen = list.style.display !== 'none';
+  if (isOpen) {
+    list.style.display = 'none';
+  } else {
+    renderRefsOptions('');
+    list.style.display = 'block';
+    document.getElementById('t-refs-search').focus();
+  }
+}
+function filterRefsDropdown() {
+  renderRefsOptions(document.getElementById('t-refs-search').value);
+}
+function renderRefsOptions(q) {
+  const opts = document.getElementById('t-refs-options');
+  const refs = _U.filter(r => {
+    const st = String(r[7]||'').toLowerCase();
+    if (st === 'khóa') return false;
+    const name = String(r[1]||''), code = String(r[0]||'');
+    if (q) return name.toLowerCase().includes(q.toLowerCase()) || code.toLowerCase().includes(q.toLowerCase());
+    return true;
+  });
+  if (!refs.length) {
+    opts.innerHTML = '<div style="padding:10px;text-align:center;color:var(--tx3);font-size:12px">Không có trọng tài</div>';
+    return;
+  }
+  opts.innerHTML = refs.map(r => {
+    const code = String(r[0]||''), name = String(r[1]||'');
+    const checked = _selectedRefs.includes(code);
+    return `<div onclick="toggleRefSelection('${code}','${name.replace(/'/g,"\\'")}',this)"
+      style="display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;transition:background .15s;${checked?'background:rgba(var(--ac-rgb,.3),0.15)':''}"
+      onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${checked?'rgba(59,130,246,0.12)':''}'">
+      <span style="font-size:16px">${checked?'☑':'☐'}</span>
+      <span style="font-size:13px;color:var(--tx)">${name}</span>
+      <span style="font-size:11px;color:var(--tx3);margin-left:auto">${code}</span>
+    </div>`;
+  }).join('');
+}
+function toggleRefSelection(code, name, el) {
+  const idx = _selectedRefs.indexOf(code);
+  if (idx >= 0) _selectedRefs.splice(idx, 1);
+  else _selectedRefs.push(code);
+  renderRefsDisplay();
+  renderRefsOptions(document.getElementById('t-refs-search').value);
+}
+function renderRefsDisplay() {
+  const display = document.getElementById('t-refs-display');
+  const ph = document.getElementById('t-refs-placeholder');
+  if (!_selectedRefs.length) {
+    ph.style.display = '';
+    // Remove tags
+    display.querySelectorAll('.ref-tag').forEach(e => e.remove());
+    return;
+  }
+  ph.style.display = 'none';
+  display.querySelectorAll('.ref-tag').forEach(e => e.remove());
+  _selectedRefs.forEach(code => {
+    const u = _U.find(r => String(r[0]||'') === code);
+    const name = u ? String(u[1]||code) : code;
+    const tag = document.createElement('span');
+    tag.className = 'ref-tag';
+    tag.style.cssText = 'background:var(--ac);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;display:inline-flex;align-items:center;gap:4px';
+    tag.innerHTML = `${name} <span onclick="event.stopPropagation();removeRef('${code}')" style="cursor:pointer;font-size:13px;line-height:1">×</span>`;
+    display.insertBefore(tag, ph);
+  });
+}
+function removeRef(code) {
+  _selectedRefs = _selectedRefs.filter(c => c !== code);
+  renderRefsDisplay();
+  renderRefsOptions(document.getElementById('t-refs-search').value);
+}
+function getSelectedRefs() { return [..._selectedRefs]; }
+// Close refs dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('t-refs-dropdown');
+  if (wrap && !wrap.contains(e.target)) {
+    const list = document.getElementById('t-refs-list');
+    if (list) list.style.display = 'none';
+  }
+});
+
 function genTournId(name) {
   if(!name) return '';
   const yr    = new Date().getFullYear();
@@ -2775,7 +2895,7 @@ function onTournNameInput(val) {
 function editTourn(id) {
   const r = _T.find(t=>String(t[0]||'')===id);
   if(!r)return;
-  openTournMo({id:r[0],name:r[1],venue:r[2],courts:r[3],start:isoD(r[4]),end:isoD(r[5]),status:r[6],noidung:r[7],note:''});
+  openTournMo({id:r[0],name:r[1],venue:r[2],courts:r[3],start:isoD(r[4]),end:isoD(r[5]),status:r[6],noidung:r[7],note:'',refs:r[8]||[]});
 }
 async function saveTournament() {
   const btn  = document.getElementById('t-save');
@@ -2793,7 +2913,8 @@ async function saveTournament() {
     startDate: document.getElementById('t-start').value,
     endDate:   document.getElementById('t-end').value,
     status:    document.getElementById('t-status').value,
-    note:      noidung
+    note:      noidung,
+    refs:      getSelectedRefs()
   };
   closeMo('mo-tourn');
   toast(`✅ ${_editT?'Cập nhật':'Tạo'} giải ${name} (${id})...`,'ok');
