@@ -700,18 +700,18 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <button class="rfbtn" id="dash-rf" onclick="loadDash()">↻ Làm mới</button>
       </div>
 
-      <!-- ── Filter phân cấp: Giải → Nội dung → Bảng ── -->
-      <div class="fbar" style="flex-wrap:wrap;gap:8px 12px">
-        <label style="font-weight:700;color:var(--tx2);font-size:12px">🏆 Giải:</label>
-        <select id="dash-giai" onchange="onDashGiaiChange()" style="min-width:180px">
+      <!-- ── Filter phân cấp (luôn hiển thị) ── -->
+      <div class="fbar">
+        <label>🏆</label>
+        <select id="dash-giai" onchange="onDashGiaiChange()">
           <option value="">Tất cả giải</option>
         </select>
-        <span id="dash-nd-sep" style="display:none;color:var(--tx3)">›</span>
-        <select id="dash-nd" onchange="onDashNdChange()" style="display:none;min-width:150px">
+        <span class="farrow">›</span>
+        <select id="dash-nd" onchange="onDashNdChange()">
           <option value="">Tất cả nội dung</option>
         </select>
-        <span id="dash-bang-sep" style="display:none;color:var(--tx3)">›</span>
-        <select id="dash-bang" onchange="loadDash()" style="display:none;min-width:110px">
+        <span class="farrow">›</span>
+        <select id="dash-bang" onchange="loadDash()">
           <option value="">Tất cả bảng</option>
         </select>
         <button id="dash-clear-filter" onclick="clearDashFilter()" style="display:none" class="btn bh bsm">✕ Bỏ lọc</button>
@@ -1940,11 +1940,24 @@ function populateTournamentDropdowns() {
 }
 
 // Lấy danh sách nội dung từ cache Matches
+// getNoidungs / getBangs: giai có thể là giaiId HOẶC giaiName
+// → resolve sang giaiName (vì _M[r[0]] = giaiName)
+function _resolveGiaiName(giai) {
+  if (!giai) return '';
+  const byId = _T.find(t => String(t[0]||'') === giai);
+  if (byId) return String(byId[1]||giai);
+  return giai; // Đã là tên rồi
+}
 function getNoidungs(giai) {
-  return [...new Set(_M.filter(r => !giai || String(r[0]||'')===giai).map(r => String(r[1]||'')).filter(Boolean))];
+  const g = _resolveGiaiName(giai);
+  return [...new Set(_M.filter(r => !g || String(r[0]||'')===g).map(r => String(r[1]||'')).filter(Boolean))].sort();
 }
 function getBangs(giai, nd) {
-  return [...new Set(_M.filter(r => (!giai||String(r[0]||'')===giai) && (!nd||String(r[1]||'')===nd)).map(r => String(r[2]||'')).filter(Boolean))];
+  const g = _resolveGiaiName(giai);
+  return [...new Set(_M.filter(r =>
+    (!g  || String(r[0]||'')===g) &&
+    (!nd || String(r[1]||'')===nd)
+  ).map(r => String(r[2]||'')).filter(Boolean))].sort();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1971,6 +1984,11 @@ async function loadDash() {
     const filterNdVal    = document.getElementById('dash-nd')?.value   || '';
     const filterBangVal  = document.getElementById('dash-bang')?.value || '';
     _dashPopulateFilters(d, giaiSelectedId, filterNdVal, filterBangVal);
+    // Cập nhật _M từ GAS nếu chưa có hoặc stale
+    if (d.tournaments?.length && _M.length === 0) {
+      // Kích prefetch _M nền
+      prefetchAll();
+    }
     const s = d.summary || {};
     // Cập nhật _dK/_dkScores từ recentResults để renderBangList đồng bộ
     try {
@@ -2057,19 +2075,21 @@ async function loadDash() {
       // VIEW FILTER: bảng trận + kết quả
       document.getElementById('dash-view-all').style.display    = 'none';
       document.getElementById('dash-view-filter').style.display = '';
-      // Title
-      const giaiN2 = filterGiaiId ? ((_T.find(t=>String(t[0]||'')===filterGiaiId)||[])[1]||filterGiaiId) : '';
+      // Title — dùng giaiName để match với _M
+      const giaiN2 = _resolveGiaiName(filterGiaiId);
       const label  = [giaiN2, filterNd, filterBang].filter(Boolean).join(' › ');
       const mTitle = document.getElementById('dash-matches-title');
-      if (mTitle) mTitle.textContent = `📋 Trận đấu — ${label||'Tất cả'}`;
-      document.getElementById('dash-filter-label').textContent = label ? `Đang xem: ${label}` : 'Tổng quan tất cả';
-      // Lấy matches từ _M
+      if (mTitle) mTitle.textContent = `📋 Trận đấu${label?' — '+label:''}`;
+      const flLbl = document.getElementById('dash-filter-label');
+      if(flLbl) flLbl.textContent = label ? `Đang xem: ${label}` : 'Tổng quan tất cả giải đấu · tự động cập nhật 30s';
+      // Lấy matches từ _M (so theo giaiName vì _M lưu tên)
       const filteredM = _M.filter(m => {
-        if (giaiN2 && String(m[0]||'') !== giaiN2) return false;
+        if (giaiN2     && String(m[0]||'') !== giaiN2)     return false;
         if (filterNd   && String(m[1]||'') !== filterNd)   return false;
         if (filterBang && String(m[2]||'') !== filterBang) return false;
         return true;
-      }).sort((a,b) => String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true})
+      }).sort((a,b) => String(a[1]||'').localeCompare(String(b[1]||''), undefined, {numeric:true})
+             || String(a[2]||'').localeCompare(String(b[2]||''), undefined, {numeric:true})
              || String(a[3]||'').localeCompare(String(b[3]||''), undefined, {numeric:true}));
       const doneM = filteredM.filter(m=>isMatchDone(m)).length;
       const liveM = filteredM.filter(m=>!isMatchDone(m)&&_lK.has(`${m[1]}|${m[2]}|${m[3]}`)).length;
@@ -2125,40 +2145,38 @@ async function loadDash() {
 //  DASHBOARD HELPERS
 // ══════════════════════════════════════════════════════
 
-// Populate ND / Bảng dropdown sau khi nhận data từ GAS
+// Populate ND / Bảng dropdown từ data GAS hoặc local _M
 function _dashPopulateFilters(d, giaiId, curNd, curBang) {
   const ndSel   = document.getElementById('dash-nd');
   const bangSel = document.getElementById('dash-bang');
-  const ndSep   = document.getElementById('dash-nd-sep');
-  const bangSep = document.getElementById('dash-bang-sep');
   const clearBtn = document.getElementById('dash-clear-filter');
 
-  const hasGiai = !!giaiId;
+  // Lấy giaiName để match với _M
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
 
-  if (hasGiai && ndSel) {
-    const nds = d.noidungs || [];
+  // ND: từ GAS data nếu có, fallback từ _M
+  const ndsFromGas = d?.noidungs || [];
+  const ndsFromM   = [...new Set(_M.filter(m => !giaiName || String(m[0]||'')===giaiName).map(m=>String(m[1]||'')).filter(Boolean))].sort();
+  const nds = ndsFromGas.length ? ndsFromGas : ndsFromM;
+
+  if (ndSel) {
     ndSel.innerHTML = '<option value="">Tất cả nội dung</option>' +
       nds.map(n=>`<option value="${esc(n)}"${n===curNd?' selected':''}>${esc(n)}</option>`).join('');
-    ndSel.style.display = ''; ndSep.style.display = '';
-
-    // Bảng: chỉ hiện nếu đã chọn ND
-    if (curNd && bangSel) {
-      const bangs = d.bangs || [];
-      bangSel.innerHTML = '<option value="">Tất cả bảng</option>' +
-        bangs.map(b=>`<option value="${esc(b)}"${b===curBang?' selected':''}>${esc(b)}</option>`).join('');
-      bangSel.style.display = ''; bangSep.style.display = '';
-    } else {
-      if(bangSel) { bangSel.style.display='none'; bangSel.value=''; }
-      if(bangSep) bangSep.style.display='none';
-    }
-  } else {
-    [ndSel, ndSep, bangSel, bangSep].forEach(el => el && (el.style.display = 'none'));
-    if(ndSel)   ndSel.value='';
-    if(bangSel) bangSel.value='';
   }
 
-  // Nút bỏ lọc
-  if(clearBtn) clearBtn.style.display = (hasGiai || curNd || curBang) ? '' : 'none';
+  // Bảng: từ GAS data nếu có, fallback từ _M
+  const bangsFromGas = d?.bangs || [];
+  const bangsFromM   = [...new Set(_M.filter(m =>
+    (!giaiName || String(m[0]||'')===giaiName) && (!curNd || String(m[1]||'')===curNd)
+  ).map(m=>String(m[2]||'')).filter(Boolean))].sort();
+  const bangs = bangsFromGas.length ? bangsFromGas : bangsFromM;
+
+  if (bangSel) {
+    bangSel.innerHTML = '<option value="">Tất cả bảng</option>' +
+      bangs.map(b=>`<option value="${esc(b)}"${b===curBang?' selected':''}>${esc(b)}</option>`).join('');
+  }
+
+  if(clearBtn) clearBtn.style.display = (giaiId || curNd || curBang) ? '' : 'none';
 }
 
 function clearDashFilter() {
@@ -2276,17 +2294,23 @@ function _renderRecentFromLocal(recs) {
 
 // ── Dashboard cascade filter handlers ──
 function onDashGiaiChange() {
-  const ndSel = document.getElementById('dash-nd');
+  const giaiId  = document.getElementById('dash-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const ndSel   = document.getElementById('dash-nd');
   const bangSel = document.getElementById('dash-bang');
-  if(ndSel)  { ndSel.value=''; ndSel.style.display='none'; }
-  if(bangSel){ bangSel.value=''; bangSel.style.display='none'; }
-  ['dash-nd-sep','dash-bang-sep'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
-  document.getElementById('dash-filter-label').textContent='Tổng quan tất cả giải đấu · tự động cập nhật 30s';
+  if(ndSel)   ndSel.value='';
+  if(bangSel) bangSel.value='';
+  // Populate ngay từ _M (không đợi GAS)
+  _dashPopulateFilters(null, giaiId, '', '');
   loadDash();
 }
 function onDashNdChange() {
+  const giaiId = document.getElementById('dash-giai').value;
+  const nd     = document.getElementById('dash-nd').value;
   const bangSel = document.getElementById('dash-bang');
-  if(bangSel){ bangSel.value=''; bangSel.style.display='none'; }
+  if(bangSel) bangSel.value='';
+  // Populate bảng từ _M ngay
+  _dashPopulateFilters(null, giaiId, nd, '');
   loadDash();
 }
 
@@ -3940,32 +3964,52 @@ async function delTourn(id, name) {
 //  BXH – Bảng xếp hạng
 // ════════════════════════════════════════════════════════════════
 function onBxhGiaiChange() {
-  const giai = document.getElementById('bxh-giai').value;
-  const nds = getNoidungs(giai);
+  const giaiId   = document.getElementById('bxh-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  // Populate ND từ _M ngay
+  const nds = [...new Set(_M.filter(r => !giaiName || String(r[0]||'')===giaiName).map(r=>String(r[1]||'')).filter(Boolean))].sort();
   const sel = document.getElementById('bxh-nd');
-  sel.innerHTML = '<option value="">Chọn nội dung</option>' + nds.map(n=>`<option>${n}</option>`).join('');
+  sel.innerHTML = '<option value="">Tất cả nội dung</option>' + nds.map(n=>`<option>${n}</option>`).join('');
   document.getElementById('bxh-bang').innerHTML = '<option value="">Tất cả bảng</option>';
+  loadStandings();
 }
 function onBxhNdChange() {
-  const giai = document.getElementById('bxh-giai').value;
-  const nd   = document.getElementById('bxh-nd').value;
-  const bangs = getBangs(giai, nd);
+  const giaiId   = document.getElementById('bxh-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const nd       = document.getElementById('bxh-nd').value;
+  // Populate Bảng từ _M ngay
+  const bangs = [...new Set(_M.filter(r =>
+    (!giaiName || String(r[0]||'')===giaiName) && (!nd || String(r[1]||'')===nd)
+  ).map(r=>String(r[2]||'')).filter(Boolean))].sort();
   const sel = document.getElementById('bxh-bang');
   sel.innerHTML = '<option value="">Tất cả bảng</option>' + bangs.map(b=>`<option>${b}</option>`).join('');
   loadStandings();
 }
 async function loadStandings() {
-  const giai = document.getElementById('bxh-giai').value;
-  const nd   = document.getElementById('bxh-nd').value;
-  const bang = document.getElementById('bxh-bang').value;
-  const wrap = document.getElementById('bxh-wrap');
-  if (!giai || !nd) { wrap.innerHTML = '<div class="empty"><div class="ei">📈</div><p>Chọn giải và nội dung</p></div>'; return; }
+  const giaiId   = document.getElementById('bxh-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const nd       = document.getElementById('bxh-nd').value;
+  const bang     = document.getElementById('bxh-bang').value;
+  const wrap     = document.getElementById('bxh-wrap');
+  // Cập nhật label bxh
+  const lbl = document.getElementById('bxh-label');
+  if (lbl) {
+    const parts = [giaiName, nd, bang].filter(Boolean);
+    lbl.textContent = parts.length ? `Đang xem: ${parts.join(' › ')}` : '';
+    lbl.style.display = parts.length ? '' : 'none';
+  }
+  if (!giaiName && !nd) {
+    wrap.innerHTML = '<div class="empty"><div class="ei">📈</div><p>Chọn giải đấu để xem BXH</p></div>'; return;
+  }
   wrap.innerHTML = '<div class="empty"><span class="spin"></span></div>';
   try {
-    const d = await gGet({ action: 'standings', giai, nd, bang });
+    const d = await gGet({ action: 'standings', giai: giaiName || giaiId, nd, bang });
     if (!d.ok) { wrap.innerHTML = '<div class="empty"><div class="ei">⚠️</div><p>'+d.reason+'</p></div>'; return; }
     const rows = d.standings || [];
-    if (!rows.length) { wrap.innerHTML = '<div class="empty"><div class="ei">📊</div><p>Chưa có kết quả trong bảng này</p></div>'; return; }
+    if (!rows.length) {
+      const hint = nd ? (bang ? `Bảng ${bang} chưa có kết quả` : `${nd} chưa có kết quả`) : 'Chưa có kết quả';
+      wrap.innerHTML = `<div class="empty"><div class="ei">📊</div><p>${hint}</p></div>`; return;
+    }
     wrap.innerHTML = `<div style="font-size:12px;color:var(--tx3);margin-bottom:8px">
         ${giai} › ${nd} ${bang ? '› '+bang : ''} — ${rows.length} đội
       </div>
@@ -4612,44 +4656,60 @@ async function clearAssignment() {
 // ════════════════════════════════════════════════════════════════
 async function loadMatches() {
   document.getElementById('mtb').innerHTML = spin(11);
-  const giai = document.getElementById('m-giai').value;
+  const giaiId   = document.getElementById('m-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
   try {
-    // Song song: matches + results + live
     const [md, rd, ld] = await Promise.all([
-      gGet({ action:'matches', giai }),
-      gGet({ action:'results', giai }),
-      gGet({ action:'live', code:'all', giai })
+      gGet({ action:'matches', giai: giaiName || giaiId }),
+      gGet({ action:'results', giai: giaiName || giaiId }),
+      gGet({ action:'live',   code:'all', giai: giaiName || giaiId })
     ]);
-    _M = normalizeMatchRows(md.rows?.slice(1) || []);
+    if (md.rows?.length > 1) {
+      const newRows = normalizeMatchRows(md.rows.slice(1));
+      if (giaiName) {
+        // Merge: giữ các giải khác, thay thế giải đang load
+        const others = _M.filter(m => String(m[0]||'') !== giaiName);
+        _M = [...others, ...newRows];
+      } else {
+        _M = newRows;
+      }
+      if (giaiName) cacheSet('matches_' + giaiName, newRows);
+    }
     buildDkFromResults(rd.rows?.slice(1)||[]);
     _lK = new Set((ld.rows?.slice(1)||[]).map(r => String(r[0]||'')));
-    // Cập nhật dropdown ND
     onMGiaiChange(true);
     filterMatches();
-  } catch(e) { toast('Lỗi kết nối','er'); }
+  } catch(e) { toast('Lỗi kết nối — thử lại','er'); }
 }
 function onMGiaiChange(skipReload=false) {
-  const giai = document.getElementById('m-giai').value;
-  const nds  = getNoidungs(giai);
-  document.getElementById('m-nd').innerHTML = '<option value="">Tất cả ND</option>' + nds.map(n=>`<option>${n}</option>`).join('');
+  const giaiId   = document.getElementById('m-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  // getNoidungs so theo giaiName (vì _M lưu tên)
+  const nds = [...new Set(_M.filter(r => !giaiName || String(r[0]||'')===giaiName).map(r=>String(r[1]||'')).filter(Boolean))].sort();
+  document.getElementById('m-nd').innerHTML = '<option value="">Tất cả nội dung</option>' + nds.map(n=>`<option>${n}</option>`).join('');
   document.getElementById('m-bang').innerHTML = '<option value="">Tất cả bảng</option>';
   if (!skipReload) loadMatches();
 }
 function onMNdChange() {
-  const giai = document.getElementById('m-giai').value;
-  const nd   = document.getElementById('m-nd').value;
-  const bangs = getBangs(giai, nd);
+  const giaiId   = document.getElementById('m-giai').value;
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
+  const nd       = document.getElementById('m-nd').value;
+  const bangs = [...new Set(_M.filter(r =>
+    (!giaiName || String(r[0]||'')===giaiName) && (!nd || String(r[1]||'')===nd)
+  ).map(r=>String(r[2]||'')).filter(Boolean))].sort();
   document.getElementById('m-bang').innerHTML = '<option value="">Tất cả bảng</option>' + bangs.map(b=>`<option>${b}</option>`).join('');
   filterMatches();
 }
 function filterMatches() {
-  const giai = document.getElementById('m-giai').value;
+  const giaiId = document.getElementById('m-giai').value;
+  // _M lưu tên giải, m-giai = giaiId → resolve sang tên
+  const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
   const nd   = document.getElementById('m-nd').value;
   const bang = document.getElementById('m-bang').value;
   const st   = document.getElementById('m-st').value;
   const q    = document.getElementById('m-q').value.toLowerCase();
   const rows = _M.filter(r => {
-    if (giai && String(r[0]||'') !== giai) return false;
+    if (giaiName && String(r[0]||'') !== giaiName) return false;
     if (nd   && String(r[1]||'') !== nd)   return false;
     if (bang && String(r[2]||'') !== bang)  return false;
     if (st) {
