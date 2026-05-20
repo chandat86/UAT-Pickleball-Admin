@@ -1637,16 +1637,25 @@ async function loadDash() {
     const live = d.liveDetail || [];
     lw.innerHTML = !live.length
       ? '<div class="empty"><div class="ei">📡</div><p>Chưa có trận đang thi đấu</p></div>'
-      : `<table class="tbl"><thead><tr><th>Giải</th><th>Trận</th><th>Đội A</th><th>Tỉ số</th><th>Đội B</th><th>Game</th><th>Cập nhật</th></tr></thead><tbody>${
+      : `<table class="tbl"><thead><tr>
+            <th style="white-space:nowrap">Giải</th>
+            <th style="white-space:nowrap">Trận</th>
+            <th style="white-space:nowrap">Đội A</th>
+            <th style="white-space:nowrap;text-align:center">Tỉ số</th>
+            <th style="white-space:nowrap">Đội B</th>
+            <th style="white-space:nowrap;text-align:center">Game</th>
+          </tr></thead><tbody>${
           live.map(r => {
             const [,bang,code] = (r.key||'').split('|');
-            return `<tr><td style="font-size:11px;color:var(--tx3)">${r.giai||'—'}</td>
-              <td><div class="lbdg"><div class="ldot"></div>LIVE</div> <span class="mono">${code||r.key}</span><br><small style="color:var(--tx3)">${bang||''}</small></td>
-              <td style="font-weight:600">${r.teamA||'—'}</td>
-              <td class="score">${r.scoreA} - ${r.scoreB}</td>
-              <td style="font-weight:600">${r.teamB||'—'}</td>
-              <td><span class="bdg bw">G${r.game||1}</span></td>
-              <td style="font-size:11px;color:var(--tx3)">${r.updated||''}</td></tr>`;
+            const gameLabel = String(r.game||'Game 1').replace(/game\s*/i,'Game ').trim();
+            return `<tr>
+              <td style="font-size:12px;color:var(--tx2);white-space:nowrap;vertical-align:middle">${r.giai||'—'}<br><small style="color:var(--tx3);font-size:10px">${bang||''}</small></td>
+              <td style="vertical-align:middle;white-space:nowrap"><div class="lbdg" style="display:inline-flex;margin-bottom:4px"><div class="ldot"></div>LIVE</div><br><span class="mono">${code||r.key}</span></td>
+              <td style="font-weight:600;vertical-align:middle">${r.teamA||'—'}</td>
+              <td style="vertical-align:middle;text-align:center;white-space:nowrap"><span style="font-family:var(--mo);font-size:16px;font-weight:900;color:var(--or);letter-spacing:2px">${r.scoreA}&nbsp;–&nbsp;${r.scoreB}</span></td>
+              <td style="font-weight:600;vertical-align:middle">${r.teamB||'—'}</td>
+              <td style="vertical-align:middle;text-align:center;white-space:nowrap"><span class="bdg bw" style="white-space:nowrap">${gameLabel}</span></td>
+            </tr>`;
           }).join('')
         }</tbody></table>`;
 
