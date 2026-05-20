@@ -2307,7 +2307,7 @@ function openNdDetail(giaiId, nd) {
     loadMatchesCache(giaiId)
       .then(() => renderBangList(giaiId, nd))
       .catch(e => {
-        document.getElementById('bang-list').innerHTML = '<div class="empty"><div class="ei">⚠️</div><p>Lỗi tải dữ liệu: ' + (e.message||'unknown') + '</p><button class="btn bp" onclick="showTournView('nd')">↻ Thử lại</button></div>';
+        document.getElementById('bang-list').innerHTML = '<div class="empty"><div class="ei">⚠️</div><p>Lỗi tải dữ liệu: ' + (e.message||'unknown') + '</p><button class="btn bp" onclick="showTournView(&apos;nd&apos;)">↻ Thử lại</button></div>';
       });
   } else {
     renderBangList(giaiId, nd);
