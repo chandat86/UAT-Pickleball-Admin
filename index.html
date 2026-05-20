@@ -2394,10 +2394,13 @@ async function applyEditBang(giaiId, nd, oldBang) {
   const matches = _M.filter(m => String(m[0]||'')===giaiId && String(m[1]||'')===nd && String(m[2]||'')===oldBang);
   toast('⏳ Đang cập nhật '+matches.length+' trận...','in');
   let ok=0, fail=0;
+  const giaiNameEB = String((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId);
   for (const m of matches) {
     const newRow=[...m]; newRow[2]=newBang; if(newCourt) newRow[8]=newCourt;
+    // Đảm bảo row[0] là tên giải (không phải mã)
+    if (newRow[0] === giaiId) newRow[0] = giaiNameEB;
     try {
-      const d=await gPost({action:'updateMatch',adminCode:CODE,giai:giaiId,bang:String(m[2]||''),code:String(m[3]||''),row:newRow});
+      const d=await gPost({action:'updateMatch',adminCode:CODE,giai:giaiNameEB,giaiName:giaiNameEB,bang:String(m[2]||''),code:String(m[3]||''),row:newRow});
       d.ok?ok++:fail++;
     } catch(e){fail++;}
   }
@@ -4205,7 +4208,9 @@ async function saveMatch() {
   const code  = document.getElementById('m-code-i').value.trim();
   if (!giai||!nd||!bang||!code) { toast('Vui lòng nhập Giải, Nội dung, Bảng, Mã trận','er'); return; }
   btn.disabled=true;
-  const row = [giai,nd,bang,code,
+  // GSheets lưu tên giải (không phải mã) — dùng giaiName để đúng
+  const giaiName = String((_T.find(t=>String(t[0]||'')===giai)||[])[1]||giai);
+  const row = [giaiName,nd,bang,code,
     document.getElementById('m-ta').value.trim(),
     document.getElementById('m-sa').value||'',
     document.getElementById('m-sb').value||'',
@@ -4218,7 +4223,7 @@ async function saveMatch() {
   toast(`✅ ${_editM?'Cập nhật':'Thêm'} trận ${code}...`,'ok');
   try {
     const payload = _editM
-      ? { action:'updateMatch', adminCode:CODE, giai, bang, code, row }
+      ? { action:'updateMatch', adminCode:CODE, giai:giaiName, giaiName, bang, code, row }
       : { action:'addMatchAdmin', adminCode:CODE, row };
     const d = await gPost(payload);
     if (!d.ok) toast('Lỗi: '+d.reason,'er');
@@ -4260,8 +4265,9 @@ async function saveScore() {
   toast('✅ Đã cập nhật tỉ số','ok');
   // Gửi GAS ngầm (updateMatch với row đầy đủ)
   try {
-    const row = idx>=0 ? _M[idx] : [g,nd,bg,code,'',sA,sB,'','','',''];
-    await gPost({ action:'updateMatch', adminCode:CODE, giai:g, bang:bg, code, row });
+    const giaiNameSC = String((_T.find(t=>String(t[0]||'')===g)||[])[1]||g);
+    const row = idx>=0 ? _M[idx] : [giaiNameSC,nd,bg,code,'',sA,sB,'','','',''];
+    await gPost({ action:'updateMatch', adminCode:CODE, giai:giaiNameSC, giaiName:giaiNameSC, bang:bg, code, row });
   } catch(e) {}
 }
 
