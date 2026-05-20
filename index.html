@@ -3576,216 +3576,232 @@ function renderAssignedRefs(giaiId, giaiName) {
 
   const rows = _asgnAllRefs.filter(r => String(r[8]||'').trim() === giaiName);
   if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--tx3)">
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--tx3)">
       ⬆️ Chưa có trọng tài nào được gán. Hãy tick chọn ở Bước 1 rồi bấm <strong>Lưu danh sách TT</strong>.
     </td></tr>`;
     return;
   }
 
-  // Lấy danh sách sân & nội dung của giải
+  // Sân của giải
   const tourn      = _T.find(t => String(t[0]||'') === giaiId);
-  const suggCourts = tourn && tourn[3] ? String(tourn[3]).split(',').map(s=>s.trim()).filter(Boolean) : [];
-  const courtOptHtml = '<option value="">— Chọn sân —</option>' +
-    suggCourts.map(c2=>`<option value="${esc(c2)}">${c2}</option>`).join('');
+  const suggCourts = tourn && tourn[3]
+    ? String(tourn[3]).split(',').map(s => s.trim()).filter(Boolean) : [];
 
   // Nội dung của giải từ lịch đấu
-  const ndSet = [...new Set((_M||[]).filter(m=>!giaiId||String(m[0]||'')===giaiId||String(m[0]||'')===giaiName)
-    .map(m=>String(m[1]||'')).filter(Boolean))].sort();
-  const ndOptHtml = '<option value="">Tất cả nội dung</option>' +
-    ndSet.map(n=>`<option value="${esc(n)}">${n}</option>`).join('');
+  const ndSet = [...new Set((_M||[])
+    .filter(m => String(m[0]||'') === giaiId || String(m[0]||'') === giaiName)
+    .map(m => String(m[1]||'')).filter(Boolean))].sort();
 
-  // Cập nhật dropdown Nội dung của phân sân nhanh
+  // Cập nhật dropdown Nội dung & Sân của phần phân sân nhanh
   const ndFilter = document.getElementById('court-nd-filter');
-  if (ndFilter) ndFilter.innerHTML = '<option value="">Tất cả</option>' + ndSet.map(n=>`<option value="${esc(n)}">${n}</option>`).join('');
-
-  // Cập nhật dropdown Sân của phân sân nhanh
+  if (ndFilter) ndFilter.innerHTML = '<option value="">Tất cả</option>' +
+    ndSet.map(n => `<option value="${esc(n)}">${n}</option>`).join('');
   const courtValSel = document.getElementById('court-val');
-  if (courtValSel) courtValSel.innerHTML = courtOptHtml;
+  if (courtValSel) courtValSel.innerHTML = '<option value="">— Chọn sân —</option>' +
+    suggCourts.map(cv => `<option value="${esc(cv)}">${cv}</option>`).join('');
 
-  // Render từng TT
-  tb.innerHTML = rows.map((r,idx) => {
+  // Cảnh báo nếu chưa có sân trong giải
+  const warnHtml = !suggCourts.length
+    ? `<tr><td colspan="6" style="font-size:11px;color:var(--or);padding:5px 8px;background:rgba(245,158,11,.06)">
+        ⚠️ Giải chưa có danh sách sân — vào <strong>Quản lý giải → Sửa</strong> để thêm sân.
+       </td></tr>` : '';
+
+  // Build options strings
+  const courtOptStr = '<option value="">— Chọn sân —</option>' +
+    suggCourts.map(cv => `<option value="${esc(cv)}">${cv}</option>`).join('');
+  const ndOptStr = '<option value="">Tất cả nội dung</option>' +
+    ndSet.map(n => `<option value="${esc(n)}">${n}</option>`).join('');
+
+  tb.innerHTML = warnHtml + rows.map(r => {
     const code    = String(r[0]||'');
     const name    = String(r[1]||code);
-    const courts  = String(r[3]||'').trim();
+    const courts  = String(r[3]||'').trim();   // "Sân A1, Sân A2"
     const rounds  = String(r[4]||'').trim();
     const noidung = String(r[9]||'').trim();
-    const saved   = !!courts; // đã lưu sân chưa
+    const isSaved = !!courts;
+    const sid     = code.replace(/[^a-zA-Z0-9]/g, '_'); // safe id
 
-    // Trạng thái
-    const statusHtml = saved
+    const statusBadge = isSaved
       ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#16a34a;font-size:11px;font-weight:700">
-           <span style="width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block"></span>Đã phân sân
+           <span style="width:7px;height:7px;border-radius:50%;background:#16a34a;flex-shrink:0"></span>Đã phân sân
          </span>`
       : `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--or);font-size:11px;font-weight:700">
-           <span style="width:7px;height:7px;border-radius:50%;background:var(--or);display:inline-block"></span>Chưa phân sân
+           <span style="width:7px;height:7px;border-radius:50%;background:var(--or);flex-shrink:0"></span>Chưa phân sân
          </span>`;
 
-    // Sân hiển thị (tags)
-    const courtDisplay = courts
-      ? courts.split(',').map(cv=>`<span style="display:inline-block;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#16a34a;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;margin:1px">${cv.trim()}</span>`).join('')
-      : '';
+    const courtTags = courts
+      ? courts.split(',').map(cv =>
+          `<span style="display:inline-block;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);
+            color:#16a34a;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;margin:1px">${cv.trim()}</span>`
+        ).join('') : '—';
 
-    const safeCode = esc(code);
-    return `<tr id="asgn-row-${safeCode}" data-code="${safeCode}" data-saved="${saved?'1':'0'}">
+    // Chọn sẵn option cho multi-select
+    const courtSelOpts = '<option value="">— Chọn sân —</option>' +
+      suggCourts.map(cv =>
+        `<option value="${esc(cv)}" ${courts.split(',').map(s=>s.trim()).includes(cv) ? 'selected' : ''}>${cv}</option>`
+      ).join('');
+
+    return `
+    <tr id="row-${sid}">
       <td>
         <div style="font-weight:700;font-size:13px">${name}</div>
         <div style="font-family:var(--mo);font-size:10px;color:var(--tx3)">${code}</div>
       </td>
-      <td id="asgn-court-cell-${safeCode}">
-        <div class="asgn-view-${safeCode}" style="${saved?'':'display:none'}">
-          ${courtDisplay}
-          <div style="margin-top:3px"></div>
-        </div>
-        <div class="asgn-edit-${safeCode}">
-          <select id="asgn-court-sel-${safeCode}" multiple
-            style="width:100%;max-height:80px;background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;font-size:12px;color:var(--tx);padding:3px">
-            ${suggCourts.map(cv=>`<option value="${esc(cv)}" ${courts.split(',').map(s=>s.trim()).includes(cv)?'selected':''}>${cv}</option>`).join('')}
-          </select>
-          <div style="font-size:10px;color:var(--tx3);margin-top:2px">Giữ Ctrl/Cmd để chọn nhiều sân</div>
-        </div>
-      </td>
-      <td id="asgn-nd-cell-${safeCode}">
-        <div class="asgn-view-${safeCode}">
-          <span style="font-size:12px;color:var(--tx2)">${noidung||'<span style="color:var(--tx3)">Tất cả</span>'}</span>
-        </div>
-        <div class="asgn-edit-${safeCode}" style="display:none">
-          <select id="asgn-nd-sel-${safeCode}"
-            style="width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;font-size:12px;color:var(--tx);padding:4px">
-            ${ndOptHtml}
-          </select>
-        </div>
-      </td>
-      <td id="asgn-round-cell-${safeCode}">
-        <div class="asgn-view-${safeCode}">
-          <span style="font-size:12px;color:var(--tx2)">${rounds||'<span style="color:var(--tx3)">Tất cả</span>'}</span>
-        </div>
-        <div class="asgn-edit-${safeCode}" style="display:none">
-          <input id="asgn-round-inp-${safeCode}" type="text" value="${esc(rounds)}"
-            placeholder="Vòng bảng, Tứ kết..."
-            style="width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;font-size:12px;color:var(--tx);padding:4px 6px">
-        </div>
-      </td>
-      <td style="text-align:center" id="asgn-status-${safeCode}">${statusHtml}</td>
+
+      <!-- SÂN -->
       <td>
-        <!-- Nút khi đang xem (chưa edit) -->
-        <div class="asgn-view-${safeCode}" style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn bp bsm" onclick="editRefRow('${safeCode}')">✏️ Sửa</button>
-          <button class="btn br bsm" onclick="clearRefCourt('${safeCode}')">✕ Xóa sân</button>
+        <div id="view-court-${sid}">${courtTags}</div>
+        <div id="edit-court-${sid}" style="display:none">
+          <select id="sel-court-${sid}" multiple
+            style="width:100%;min-height:70px;background:var(--bg3);border:1px solid var(--bdr);
+              border-radius:6px;font-size:12px;color:var(--tx);padding:3px">
+            ${courtSelOpts}
+          </select>
+          <div style="font-size:10px;color:var(--tx3);margin-top:3px">Giữ Ctrl/Cmd để chọn nhiều sân</div>
         </div>
-        <!-- Nút khi đang edit -->
-        <div class="asgn-edit-${safeCode}" style="display:none;gap:5px;flex-wrap:wrap">
-          <button class="btn bp bsm" onclick="saveRefRow('${safeCode}')">💾 Lưu</button>
-          <button class="btn bh bsm" onclick="cancelRefRow('${safeCode}')">Hủy</button>
+      </td>
+
+      <!-- NỘI DUNG -->
+      <td>
+        <div id="view-nd-${sid}" style="font-size:12px;color:var(--tx2)">${noidung || '<span style="color:var(--tx3)">Tất cả</span>'}</div>
+        <div id="edit-nd-${sid}" style="display:none">
+          <select id="sel-nd-${sid}"
+            style="width:100%;background:var(--bg3);border:1px solid var(--bdr);
+              border-radius:6px;font-size:12px;color:var(--tx);padding:5px 6px">
+            ${ndOptStr.replace(`value="${esc(noidung)}"`, `value="${esc(noidung)}" selected`)}
+          </select>
+        </div>
+      </td>
+
+      <!-- VÒNG -->
+      <td>
+        <div id="view-round-${sid}" style="font-size:12px;color:var(--tx2)">${rounds || '<span style="color:var(--tx3)">Tất cả</span>'}</div>
+        <div id="edit-round-${sid}" style="display:none">
+          <input id="inp-round-${sid}" type="text" value="${esc(rounds)}"
+            placeholder="Vòng bảng, Tứ kết..."
+            style="width:100%;background:var(--bg3);border:1px solid var(--bdr);
+              border-radius:6px;font-size:12px;color:var(--tx);padding:5px 7px">
+        </div>
+      </td>
+
+      <!-- TÌNH TRẠNG -->
+      <td style="text-align:center" id="status-${sid}">${statusBadge}</td>
+
+      <!-- HÀNH ĐỘNG -->
+      <td>
+        <!-- View mode -->
+        <div id="act-view-${sid}" style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn bp bsm" onclick="refEditMode('${sid}')">✏️ Sửa</button>
+          <button class="btn br bsm" onclick="refClearCourt('${sid}','${esc(code)}')">✕ Xóa</button>
+        </div>
+        <!-- Edit mode -->
+        <div id="act-edit-${sid}" style="display:none;gap:5px;flex-wrap:wrap">
+          <button class="btn bp bsm" id="btn-save-${sid}" onclick="refSaveRow('${sid}','${esc(code)}')">💾 Lưu</button>
+          <button class="btn bh bsm" onclick="refCancelMode('${sid}')">Hủy</button>
         </div>
       </td>
     </tr>`;
   }).join('');
-
-  // Nếu không có sân đăng ký → hiện hướng dẫn
-  if (!suggCourts.length) {
-    const note = document.createElement('tr');
-    note.innerHTML = `<td colspan="6" style="font-size:11px;color:var(--or);padding:6px 8px;background:rgba(245,158,11,.06)">
-      ⚠️ Giải chưa có danh sách sân. Hãy thêm sân vào phần <strong>Quản lý giải</strong> (trường Danh sách sân).
-    </td>`;
-    tb.appendChild(note);
-  }
 }
 
-// ── Inline edit helpers ──────────────────────────────────────────
-function editRefRow(code) {
+// ════════════════════════════════════════════════════════════════
+//  INLINE EDIT HELPERS — dùng id riêng biệt, không dùng class selector
+// ════════════════════════════════════════════════════════════════
+function refEditMode(sid) {
   // Ẩn view, hiện edit
-  document.querySelectorAll(`.asgn-view-${code}`).forEach(el => el.style.display = 'none');
-  document.querySelectorAll(`.asgn-edit-${code}`).forEach(el => el.style.display = 'flex');
-  // Hiện nút edit action
-  document.querySelector(`.asgn-edit-${code}[style*="flex"]`); // already shown
-  const row = document.getElementById(`asgn-row-${code}`);
-  if (row) row.style.background = 'rgba(59,130,246,.05)';
+  ['court','nd','round'].forEach(f => {
+    const v = document.getElementById(`view-${f}-${sid}`);
+    const e = document.getElementById(`edit-${f}-${sid}`);
+    if (v) v.style.display = 'none';
+    if (e) e.style.display = '';
+  });
+  const avEl = document.getElementById(`act-view-${sid}`);
+  const aeEl = document.getElementById(`act-edit-${sid}`);
+  if (avEl) avEl.style.display = 'none';
+  if (aeEl) aeEl.style.display = 'flex';
+  const row = document.getElementById(`row-${sid}`);
+  if (row) row.style.background = 'rgba(59,130,246,.06)';
 }
 
-function cancelRefRow(code) {
-  document.querySelectorAll(`.asgn-view-${code}`).forEach(el => el.style.display = '');
-  document.querySelectorAll(`.asgn-edit-${code}`).forEach(el => el.style.display = 'none');
-  const row = document.getElementById(`asgn-row-${code}`);
+function refCancelMode(sid) {
+  ['court','nd','round'].forEach(f => {
+    const v = document.getElementById(`view-${f}-${sid}`);
+    const e = document.getElementById(`edit-${f}-${sid}`);
+    if (v) v.style.display = '';
+    if (e) e.style.display = 'none';
+  });
+  const avEl = document.getElementById(`act-view-${sid}`);
+  const aeEl = document.getElementById(`act-edit-${sid}`);
+  if (avEl) avEl.style.display = 'flex';
+  if (aeEl) aeEl.style.display = 'none';
+  const row = document.getElementById(`row-${sid}`);
   if (row) row.style.background = '';
 }
 
-async function saveRefRow(code) {
-  // Lấy giá trị từ các input/select inline
-  const courtSel = document.getElementById(`asgn-court-sel-${code}`);
-  const ndSel    = document.getElementById(`asgn-nd-sel-${code}`);
-  const roundInp = document.getElementById(`asgn-round-inp-${code}`);
-  const courts   = courtSel ? [...courtSel.selectedOptions].map(o=>o.value).filter(Boolean).join(', ') : '';
-  const noidung  = ndSel    ? ndSel.value : '';
+async function refSaveRow(sid, code) {
+  const courtSel = document.getElementById(`sel-court-${sid}`);
+  const ndSel    = document.getElementById(`sel-nd-${sid}`);
+  const roundInp = document.getElementById(`inp-round-${sid}`);
+  const courts   = courtSel
+    ? [...courtSel.selectedOptions].map(o => o.value).filter(Boolean).join(', ')
+    : '';
+  const noidung  = ndSel    ? ndSel.value.trim()    : '';
   const rounds   = roundInp ? roundInp.value.trim() : '';
 
-  const btn = document.querySelector(`#asgn-row-${code} .asgn-edit-${code} .btn.bp`);
+  const btn = document.getElementById(`btn-save-${sid}`);
   if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
   try {
-    const d = await gPost({ action:'assignCourtToRef', adminCode:CODE, refCode:code, courts, rounds, noidung });
-    if (!d.ok) { toast('Lỗi: '+(d.reason||''), 'er'); if(btn){btn.disabled=false;btn.textContent='💾 Lưu';} return; }
-
-    // Cập nhật _asgnAllRefs local
-    const idx = _asgnAllRefs.findIndex(r => String(r[0]||'').trim().toUpperCase() === code.toUpperCase());
+    const d = await gPost({
+      action: 'assignCourtToRef', adminCode: CODE,
+      refCode: code, courts, rounds, noidung
+    });
+    if (!d.ok) {
+      toast('Lỗi: ' + (d.reason || ''), 'er');
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Lưu'; }
+      return;
+    }
+    // Cập nhật cache local
+    const idx = _asgnAllRefs.findIndex(r =>
+      String(r[0]||'').trim().toUpperCase() === code.trim().toUpperCase());
     if (idx >= 0) {
       _asgnAllRefs[idx][3] = courts;
       _asgnAllRefs[idx][4] = rounds;
       _asgnAllRefs[idx][9] = noidung;
     }
+    // Cập nhật _U cũng
+    const ui = (_U||[]).findIndex(r =>
+      String(r[0]||'').trim().toUpperCase() === code.trim().toUpperCase());
+    if (ui >= 0) { _U[ui][3]=courts; _U[ui][4]=rounds; _U[ui][9]=noidung; }
 
     toast('✅ Đã lưu phân sân cho ' + code, 'ok');
-    // Re-render chỉ dòng đó
     renderAssignedRefs(_asgnGiaiId, _asgnGiai);
-  } catch(e) { toast('Lỗi kết nối','er'); if(btn){btn.disabled=false;btn.textContent='💾 Lưu';} }
+  } catch(e) {
+    toast('Lỗi kết nối', 'er');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Lưu'; }
+  }
 }
 
-async function clearRefCourt(code) {
-  if (!confirm('Xóa sân phân công của trọng tài ' + code + '?')) return;
+async function refClearCourt(sid, code) {
+  if (!confirm('Xóa sân phân công của ' + code + '?')) return;
   try {
-    const d = await gPost({ action:'assignCourtToRef', adminCode:CODE, refCode:code, courts:'', rounds:'', noidung:'' });
-    if (!d.ok) { toast('Lỗi','er'); return; }
-    const idx = _asgnAllRefs.findIndex(r => String(r[0]||'').trim().toUpperCase() === code.toUpperCase());
+    const d = await gPost({
+      action: 'assignCourtToRef', adminCode: CODE,
+      refCode: code, courts: '', rounds: '', noidung: ''
+    });
+    if (!d.ok) { toast('Lỗi', 'er'); return; }
+    const idx = _asgnAllRefs.findIndex(r =>
+      String(r[0]||'').trim().toUpperCase() === code.trim().toUpperCase());
     if (idx >= 0) { _asgnAllRefs[idx][3]=''; _asgnAllRefs[idx][4]=''; _asgnAllRefs[idx][9]=''; }
     toast('✅ Đã xóa sân của ' + code, 'ok');
     renderAssignedRefs(_asgnGiaiId, _asgnGiai);
-  } catch(e) { toast('Lỗi kết nối','er'); }
+  } catch(e) { toast('Lỗi kết nối', 'er'); }
 }
 
-// ── Bang-Court assignment ────────────────────────────────────────
-let _bangCourtMap = {}; // { "Bảng A": "Sân A1" } — track đã gán trong session
-
-function refreshBangDropdown() {
-  const giai = _asgnGiaiId;
-  const nd   = document.getElementById('court-nd-filter')?.value || '';
-  const bangs = getBangs(giai, nd);
-  const bs = document.getElementById('court-bang');
-  if (!bs) return;
-  bs.innerHTML = '<option value="">Chọn bảng</option>' + bangs.map(b => {
-    const existing = _bangCourtMap[b];
-    return `<option value="${esc(b)}">${b}${existing?' ✓ '+existing:''}</option>`;
-  }).join('');
-  renderBangCourtTags();
-}
-
-function renderBangCourtTags() {
-  const wrap = document.getElementById('bang-court-tags');
-  if (!wrap) return;
-  const entries = Object.entries(_bangCourtMap);
-  if (!entries.length) { wrap.innerHTML=''; return; }
-  wrap.innerHTML = entries.map(([bang,court]) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:#16a34a">
-      ${bang} → ${court}
-      <button type="button" onclick="removeBangCourt('${esc(bang)}')"
-        style="background:none;border:none;cursor:pointer;color:var(--rd);font-size:13px;padding:0;line-height:1;margin-left:2px">×</button>
-    </span>`
-  ).join('');
-}
-
-function removeBangCourt(bang) {
-  delete _bangCourtMap[bang];
-  renderBangCourtTags();
-  refreshBangDropdown();
-}
+// ── Backward compat stubs ────────────────────────────────────────
+function editRefRow(code)   { refEditMode(code.replace(/[^a-zA-Z0-9]/g,'_')); }
+function cancelRefRow(code) { refCancelMode(code.replace(/[^a-zA-Z0-9]/g,'_')); }
+function clearRefCourt(sid, code) { refClearCourt(sid, code || sid); }
 
 
 async function filterAssign() { renderAssignedRefs(_asgnGiaiId, _asgnGiai); }
