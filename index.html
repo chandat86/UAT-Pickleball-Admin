@@ -985,18 +985,18 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 
   <div class="fgrid t3">
     <div class="fg full" style="grid-column:1/-1"><label>Tên giải *</label>
-      <input type="text" id="t-name" placeholder="Ngân Hàng Đà Nẵng 2025" oninput="onTournNameInput(this.value)">
+      <input type="text" id="t-name" placeholder="Tên Giải Đấu" oninput="onTournNameInput(this.value)">
     </div>
     <div class="fg"><label>Cụm sân *</label>
-      <input type="text" id="t-venue" placeholder="Sân AK Đà Nẵng">
+      <input type="text" id="t-venue" placeholder="Tên Sân">
       <span class="hint">Tên khu vực / địa điểm tổ chức</span></div>
     <div class="fg"><label>Ngày bắt đầu</label><input type="date" id="t-start"></div>
     <div class="fg"><label>Ngày kết thúc</label><input type="date" id="t-end"></div>
     <div class="fg full"><label>Danh sách sân (phân cách bằng dấu phẩy)</label>
-      <input type="text" id="t-courts" placeholder="Sân A1, Sân A2, Sân A3, Sân B1, Sân B2">
+      <input type="text" id="t-courts" placeholder="Sân 1, Sân 2, Sân 3, ...">
       <span class="hint">Dùng khi phân công trọng tài nhanh theo sân</span></div>
     <div class="fg full"><label>Nội dung thi đấu (phân cách bằng dấu phẩy)</label>
-      <input type="text" id="t-noidung" placeholder="Đôi Nam 7.0, Đôi Nữ Vui Vẻ, Đôi Hỗn Hợp 5.6">
+      <input type="text" id="t-noidung" placeholder="Nội dung thi đấu 1, Nội dung thi đấu 2, ...">
       <span class="hint">Liệt kê các nội dung — hiển thị trên dashboard và lọc lịch</span></div>
     <div class="fg"><label>Trạng thái</label>
       <select id="t-status">
@@ -1033,7 +1033,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <div class="fg"><label>Giải đấu phân công</label>
       <select id="u-giai"><option value="">— Chọn giải —</option></select></div>
     <div class="fg"><label>Nội dung thi đấu</label>
-      <input type="text" id="u-nd" placeholder="Đôi Nam 7.0 (để trống = tất cả)"></div>
+      <input type="text" id="u-nd" placeholder="Nội dung thi đấu (để trống = tất cả)"></div>
     <div class="fg full"><label>Sân được phân *</label>
       <input type="text" id="u-courts" placeholder="Sân 1, Sân 2  (để trống = không thấy trận)">
       <span class="hint">⚠️ Để trống = trọng tài sẽ không thấy bất kỳ trận nào.</span></div>
@@ -1054,7 +1054,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
   <input type="hidden" id="assign-code">
   <div class="fgrid">
     <div class="fg"><label>Giải đấu</label><select id="assign-giai"><option value="">— Chọn giải —</option></select></div>
-    <div class="fg"><label>Nội dung</label><input type="text" id="assign-nd" placeholder="Đôi Nam 7.0 (trống=tất cả)"></div>
+    <div class="fg"><label>Nội dung</label><input type="text" id="assign-nd" placeholder="Nội dung thi đấu (trống=tất cả)"></div>
     <div class="fg full"><label>Sân được phân</label>
       <input type="text" id="assign-courts" placeholder="Sân 1, Sân 2">
       <span class="hint">⚠️ Để trống = không thấy trận nào</span></div>
@@ -1073,7 +1073,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
   <div class="mh"><div class="mtt" id="match-tt">Thêm trận đấu</div><button class="mc" onclick="closeMo('mo-match')">✕</button></div>
   <div class="fgrid t3">
     <div class="fg"><label>Giải đấu *</label><select id="m-giai-i"><option value="">— Chọn giải —</option></select></div>
-    <div class="fg"><label>Nội dung *</label><input type="text" id="m-nd-i" placeholder="Đôi Nam 7.0"></div>
+    <div class="fg"><label>Nội dung *</label><input type="text" id="m-nd-i" placeholder="Nội dung thi đấu"></div>
     <div class="fg"><label>Bảng *</label><input type="text" id="m-bang-i" placeholder="Bảng A"></div>
     <div class="fg"><label>Mã trận *</label><input type="text" id="m-code-i" placeholder="A1" style="font-family:var(--mo)"></div>
     <div class="fg"><label>Đội A</label><input type="text" id="m-ta" placeholder="Nguyễn A - Trần B"></div>
@@ -1140,7 +1140,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
   <div class="mh"><div class="mtt">⚡ Tạo lịch Round-Robin</div><button class="mc" onclick="closeMo('mo-rr')">✕</button></div>
   <div class="fgrid">
     <div class="fg"><label>Giải đấu *</label><select id="rr-giai"><option value="">— Chọn giải —</option></select></div>
-    <div class="fg"><label>Nội dung *</label><input type="text" id="rr-nd" placeholder="Đôi Nam 7.0"></div>
+    <div class="fg"><label>Nội dung *</label><input type="text" id="rr-nd" placeholder="Nội dung thi đấu"></div>
     <div class="fg"><label>Bảng *</label><input type="text" id="rr-bang" placeholder="Bảng A"></div>
     <div class="fg"><label>Sân</label><input type="text" id="rr-court" placeholder="Sân 1"></div>
     <div class="fg"><label>Vòng đấu</label><input type="text" id="rr-round" placeholder="Vòng bảng"></div>
@@ -1166,7 +1166,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <div class="fg"><label>Họ tên *</label><input type="text" id="p-name" placeholder="Nguyễn Văn An"></div>
     <div class="fg"><label>Giới tính</label><select id="p-gt"><option>Nam</option><option>Nữ</option><option>Khác</option></select></div>
     <div class="fg"><label>Giải đấu</label><select id="p-giai"><option value="">— Chọn giải —</option></select></div>
-    <div class="fg"><label>Nội dung</label><input type="text" id="p-cat" placeholder="Đôi Nam 7.0"></div>
+    <div class="fg"><label>Nội dung</label><input type="text" id="p-cat" placeholder="Nội dung thi đấu"></div>
     <div class="fg"><label>Cấp độ</label><input type="text" id="p-lvl" placeholder="7.0"></div>
     <div class="fg"><label>Ngày sinh</label><input type="date" id="p-dob"></div>
     <div class="fg"><label>Đơn vị / CLB</label><input type="text" id="p-club"></div>
@@ -1206,8 +1206,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 <div class="mo" id="mo-nd"><div class="mbox">
   <div class="mh"><div class="mtt">＋ Thêm nội dung thi đấu</div><button class="mc" onclick="closeMo('mo-nd')">✕</button></div>
   <div class="fg"><label>Tên nội dung *</label>
-    <input type="text" id="nd-name" placeholder="Đôi Nam 7.0" style="font-size:15px">
-    <span class="hint">VD: Đôi Nam 7.0 · Đôi Nữ Vui Vẻ · Đôi Hỗn Hợp 5.6</span></div>
+    <input type="text" id="nd-name" placeholder="Nội dung thi đấu" style="font-size:15px">
+    <span class="hint">VD: Đôi Nam · Đôi Nữ · Đôi Hỗn Hợp</span></div>
   <div class="mf">
     <button class="btn bh" onclick="closeMo('mo-nd')">Hủy</button>
     <button class="btn bp" onclick="saveNoidung()">Thêm</button>
@@ -3497,7 +3497,7 @@ async function importPlayers(){
 //  CSV TEMPLATES
 // ════════════════════════════════════════════════════════════════
 function dlCSVTpl(){
-  dl('giai,noidung,bang,ma,doiA,doiB,san,vong,ghichu\nNH2025,Đôi Nam 7.0,Bảng A,A1,Đội 1,Đội 2,Sân 1,Vòng bảng,\nNH2025,Đôi Nam 7.0,Bảng A,A2,Đội 3,Đội 4,Sân 2,Vòng bảng,','lich_mau_v3.csv');
+  dl('giai,noidung,bang,ma,doiA,doiB,san,vong,ghichu\nGIAI001,Nội dung thi đấu,Bảng A,A1,Đội 1,Đội 2,Sân 1,Vòng bảng,\nGIAI001,Nội dung thi đấu,Bảng A,A2,Đội 3,Đội 4,Sân 2,Vòng bảng,','lich_mau_v3.csv');
 }
 function dl(c,f){const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(c);a.download=f;a.click();}
 
