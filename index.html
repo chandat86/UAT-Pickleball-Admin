@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<!-- Pickleball v6 | Optimized 2026-05-21 | Batch API | Debounce | Timeout | No-cache -->
+<!-- Pickleball v7 | Fix: duplicate _curPage/_curTourn/_curNd let declarations → login SyntaxError | 2026-05-21 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin v5 — Referee Pickleball / DA NANG ®</title>
+<title>Admin v7 — Referee Pickleball / DA NANG ®</title>
 <style>
 /* ═══════════════════════════════════════════════════════
    Pickleball Admin — Mobile-First Professional UI
@@ -1679,7 +1679,7 @@ let _dashData=null;                                // cache dashboard
 let _editU=null,_editM=null,_editP=null,_editT=null; // đang sửa gì
 let _rrRows=[], _csvM=[], _csvP=[];                // batch data
 let _dtimer=null, _rtimer=null, _dbt=null;         // timers
-let _curPage='dashboard';                          // trang hiện tại
+let _curTourn=null;                                // giải đang xem (khai báo sớm để dùng trong polling)
 
 // ── buildDkFromResults: build _dK, _dkBangCode, _dkScores từ KetQua rows ──
 // Gọi sau mỗi lần có resultData mới
@@ -2873,8 +2873,7 @@ function showStatMo(type) {
 //  TOURNAMENTS — v3 full
 //  State: _T (cache), _curTourn, _curNd
 // ════════════════════════════════════════════════════════════════
-let _curTourn = null; // giải đang xem
-let _curNd    = null; // nội dung đang xem
+// _curTourn và _curNd đã khai báo ở trên (global state)
 let _bangRows = [];   // preview lịch bảng
 
 // ── Chuyển view (list | detail | nd) ──
