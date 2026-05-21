@@ -1950,17 +1950,22 @@ async function updateLiveScores() {
 // ════════════════════════════════════════════════════════════════
 async function gGet(p, timeout=25000) {
   const qs = Object.entries(p).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-  // Thêm timestamp để tránh browser cache GAS response
+  // KHÔNG dùng custom header (gây CORS preflight, GAS không hỗ trợ)
+  // Dùng _t=timestamp để bust cache thay thế
   const ctrl = new AbortController();
   const tid  = setTimeout(() => ctrl.abort(), timeout);
   try {
     const r = await fetch(`${GS}?${qs}&_t=${Date.now()}`, {
       redirect: 'follow',
-      signal: ctrl.signal,
-      headers: { 'Cache-Control': 'no-cache' }
+      signal: ctrl.signal
+      // KHÔNG thêm headers — GAS chỉ accept simple requests
     });
     clearTimeout(tid);
-    return r.json();
+    const text = await r.text();
+    try { return JSON.parse(text); } catch(e) {
+      const m = text.match(/\w+\(({[\s\S]*})\)/);
+      return m ? JSON.parse(m[1]) : null;
+    }
   } catch(e) {
     clearTimeout(tid);
     if (e.name === 'AbortError') throw new Error('GAS timeout sau ' + (timeout/1000) + 's');
