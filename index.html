@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<!-- Pickleball v7 | Fix: duplicate _curPage/_curTourn/_curNd let declarations → login SyntaxError | 2026-05-21 -->
+<!-- Pickleball v7 | Fix: duplicate let _curPage/_curTourn + _M double-match triple bug | 2026-05-21 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Admin v7 — Referee Pickleball / DA NANG ®</title>
@@ -2284,14 +2284,17 @@ async function loadDash() {
     if (mRes?.rows?.length > 1) {
       const newRows = normalizeMatchRows(mRes.rows.slice(1));
       cacheSet(cKeyM, newRows);
-      // Merge: giữ các giải khác, thay giải hiện tại
+      // Merge: giữ các giải khác (theo giaiName), thay giải hiện tại
       const others = _M.filter(m => String(m[0]||'') !== giaiName);
       _M = [...others, ...newRows];
+      dedupM();
     } else if (cachedM) {
-      // Dùng cache: đảm bảo _M có dữ liệu của giải này
-      const others = _M.filter(m => String(m[0]||'') !== giaiName);
+      // Dùng cache: chỉ merge nếu chưa có data của giải này
       const alreadyHas = _M.some(m => String(m[0]||'') === giaiName);
-      if (!alreadyHas) _M = [...others, ...cachedM];
+      if (!alreadyHas) {
+        _M = [..._M, ...cachedM];
+        dedupM();
+      }
     }
 
     // Populate giải dropdown nếu có data
@@ -2405,6 +2408,7 @@ async function loadDash() {
         if (cached2) {
           const others3 = _M.filter(m => String(m[0]||'') !== giaiForM);
           _M = [...others3, ...cached2];
+          dedupM();
         } else {
           try {
             const mRes2 = await gGet({ action:'matches', giai: giaiForM });
@@ -2413,6 +2417,7 @@ async function loadDash() {
               cacheSet(cKey2, newRows2);
               const others4 = _M.filter(m => String(m[0]||'') !== giaiForM);
               _M = [...others4, ...newRows2];
+              dedupM();
             }
           } catch(eM) { console.warn('[loadDash] fetch matches:', eM.message); }
         }
@@ -2774,6 +2779,7 @@ function onDashGiaiChange() {
     if (cached) {
       const others = _M.filter(m => String(m[0]||'') !== giaiName);
       _M = [...others, ...cached];
+      dedupM();
       _dashPopulateFilters(null, giaiId, '', '');
     } else {
       // Load nền, rồi loadDash sau khi có data
@@ -2783,6 +2789,7 @@ function onDashGiaiChange() {
           cacheSet(cKey, newRows);
           const others2 = _M.filter(m => String(m[0]||'') !== giaiName);
           _M = [...others2, ...newRows];
+          dedupM();
           _dashPopulateFilters(null, giaiId, ndSel?.value||'', bangSel?.value||'');
         }
       }).catch(() => {});
@@ -3000,11 +3007,10 @@ function openNdDetail(giaiId, nd) {
   document.getElementById('tv-nd-title').textContent = nd;
   document.getElementById('tv-nd-sub').textContent   = giaiName + ' · ' + (r[2]||'');
   showTournView('nd');
-  // Kiểm tra xem _M đã có data của giải này chưa (so sánh cả mã lẫn tên)
-  const hasData = _M.some(m => {
-    const v = String(m[0]||'');
-    return (v === giaiId || v === giaiName) && String(m[1]||'') === nd;
-  });
+  // Kiểm tra _M theo giaiName (GSheets luôn lưu tên, không lưu mã)
+  const hasData = giaiName
+    ? _M.some(m => String(m[0]||'') === giaiName && String(m[1]||'') === nd)
+    : _M.some(m => String(m[1]||'') === nd);
   if (!hasData) {
     // Chưa có → load lại từ GSheets rồi render
     document.getElementById('bang-list').innerHTML =
@@ -3025,7 +3031,8 @@ function openNdDetail(giaiId, nd) {
 function renderBangList(giaiId, nd) {
   const wrap     = document.getElementById('bang-list');
   const giaiName = String((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||'');
-  const matchGiai = m => { const v=String(m[0]||''); return v===giaiId || (giaiName && v===giaiName); };
+  // GSheets luôn lưu tên giải trong m[0] — chỉ so theo giaiName để tránh double-match
+  const matchGiai = m => String(m[0]||'') === giaiName;
   const bangs  = [...new Set(_M.filter(m=>matchGiai(m)&&String(m[1]||'')===nd).map(m=>String(m[2]||'')).filter(Boolean))];
   bangs.sort((a,b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:'base'}));
   if (!bangs.length) {
@@ -3985,9 +3992,10 @@ async function loadMatchesCache(giaiId='') {
   // Dùng cache nếu còn mới
   const cached = cacheGet(cKey);
   if (cached) {
-    // Thay thế hoàn toàn dữ liệu của giải này trong _M (không append để tránh duplicate)
-    const others = _M.filter(m => String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId);
+    // Thay thế hoàn toàn dữ liệu của giải này trong _M (chỉ theo giaiName)
+    const others = _M.filter(m => String(m[0]||'') !== giaiName);
     _M = [...others, ...cached];
+    dedupM();
     return;
   }
 
@@ -4002,10 +4010,8 @@ async function loadMatchesCache(giaiId='') {
     if (md.rows?.length > 1) {
       const newRows = normalizeMatchRows(md.rows.slice(1));
       cacheSet(cKey, newRows);
-      // REPLACE (không append) — loại bỏ cả giaiName lẫn giaiId để tránh duplicate
-      const others = _M.filter(m =>
-        String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId
-      );
+      // REPLACE theo giaiName (GSheets luôn lưu tên)
+      const others = _M.filter(m => String(m[0]||'') !== giaiName);
       _M = [...others, ...newRows];
     }
     if (rd.rows?.length > 1) buildDkFromResults(rd.rows.slice(1));
@@ -4017,7 +4023,7 @@ async function loadMatchesCache(giaiId='') {
           teamA:String(r[2]||''), teamB:String(r[5]||''), game:String(r[7]||'') };
       });
     }
-    dedupM(); // Safety net: loại bỏ duplicate nếu có
+    dedupM(); // Safety net
     console.log('[loadMatchesCache] giaiName:', giaiName, '→ M:', _M.length, 'done:', _dkBangCode.size);
   } catch(e) {
     console.error('[loadMatchesCache]', e.message);
@@ -5782,6 +5788,7 @@ async function loadMatches() {
         // Merge: giữ các giải khác, thay thế giải đang load
         const others = _M.filter(m => String(m[0]||'') !== giaiName);
         _M = [...others, ...newRows];
+        dedupM();
       } else {
         _M = newRows;
       }
