@@ -1965,6 +1965,7 @@ async function prefetchAll() {
     populateTournamentDropdowns();
     if (document.getElementById('tv-list')) renderTournCards(_T);
     _showGasOk(); // Ẩn error bar khi kết nối thành công
+    if (_curPage === 'bracket') bkInit();
     console.log('[prefetch] OK — T:', _T.length, 'M:', _M.length,
       'done:', _dkBangCode.size, 'live:', _lK.size);
   } catch(e) {
@@ -2026,6 +2027,9 @@ async function updateLiveScores() {
     // Re-render nếu đang ở trang liên quan
     if (_curPage === 'tournaments' && document.getElementById('tv-nd')?.style.display !== 'none') {
       renderBangList(_curGiaiId||'', _curNd||'');
+    }
+    if (_curPage === 'bracket' && _bkGiai && _bkNd) {
+      bkRender(); // Cập nhật trạng thái live trên cây thi đấu
     }
   } catch(e) { /* silent */ }
 }
@@ -4148,14 +4152,27 @@ let _bkOverrides = {}; // {code: {teamA, teamB}}
 function onBkGiaiChange() {
   const sel = document.getElementById('bk-giai');
   _bkGiai = sel.value;
-  _bkGiaiName = sel.options[sel.selectedIndex]?.text || '';
-  // Populate nd
+  _bkGiaiName = _resolveGiaiName(_bkGiai) || (sel.options[sel.selectedIndex]?.text || '');
+  // Populate nd — _M[0] = giaiName, cần resolve giaiId → giaiName trước khi filter
+  const giaiName = _bkGiaiName;
   const ndSel = document.getElementById('bk-nd');
-  const nds = [...new Set(_M.filter(m=>String(m[0]||'')===_bkGiai).map(m=>String(m[1]||'')).filter(Boolean))];
+  const nds = [...new Set(
+    _M.filter(m => String(m[0]||'') === giaiName)
+       .map(m => String(m[1]||'')).filter(Boolean)
+  )].sort();
   ndSel.innerHTML = '<option value="">— Nội dung —</option>' +
     nds.map(n=>`<option value="${n}">${n}</option>`).join('');
   _bkNd = '';
-  document.getElementById('bk-wrap').innerHTML = '<div class="empty"><div class="ei">🏆</div><p>Chọn nội dung thi đấu</p></div>';
+  // Nếu chỉ có 1 nội dung → tự chọn luôn
+  if (nds.length === 1) {
+    ndSel.value = nds[0];
+    onBkNdChange();
+  } else {
+    document.getElementById('bk-wrap').innerHTML =
+      nds.length === 0
+        ? '<div class="empty"><div class="ei">📋</div><p>Chưa có dữ liệu lịch thi đấu cho giải này.<br><small style="color:var(--tx3)">Kiểm tra trang Lịch thi đấu.</small></p></div>'
+        : '<div class="empty"><div class="ei">🏆</div><p>Chọn nội dung thi đấu</p></div>';
+  }
 }
 
 function onBkNdChange() {
@@ -4165,24 +4182,63 @@ function onBkNdChange() {
 }
 
 function bkInit() {
-  // Sync giai selector với _T
   const sel = document.getElementById('bk-giai');
-  const cur = sel.value;
+  const prev = _bkGiai || sel.value;
   sel.innerHTML = '<option value="">— Chọn giải —</option>' +
     (_T||[]).map(t=>`<option value="${t[0]||''}">${t[1]||t[0]||''}</option>`).join('');
-  if (cur) { sel.value = cur; onBkGiaiChange(); }
+
+  // Ưu tiên: giải đang xem > giải duy nhất > không chọn
+  if (prev && sel.querySelector(`option[value="${prev}"]`)) {
+    sel.value = prev;
+    onBkGiaiChange();
+  } else if (_T && _T.length === 1) {
+    sel.value = String(_T[0][0]||'');
+    onBkGiaiChange();
+  } else if (_curTourn) {
+    // Dùng giải đang được chọn ở trang Giải đấu
+    const curId = String(_curTourn[0]||'');
+    if (curId && sel.querySelector(`option[value="${curId}"]`)) {
+      sel.value = curId;
+      onBkGiaiChange();
+    }
+  }
 }
 
-function bkRefresh() {
-  // Reload data rồi re-render
-  const giaiId = _bkGiai;
-  if (giaiId) loadMatchesCache(giaiId).then(() => bkRender());
-  else bkRender();
+async function bkRefresh() {
+  if (!_bkGiai) { bkRender(); return; }
+  const btn = document.querySelector('#page-bracket .rfbtn');
+  if (btn) btn.textContent = '⏳ ...';
+  try {
+    // Reload dữ liệu từ GAS
+    const giaiName = _resolveGiaiName(_bkGiai) || _bkGiai;
+    const d = await gGet({ action:'matches', giai: giaiName }).catch(()=>({}));
+    if (d?.rows?.length) {
+      const normalized = normalizeMatchRows(d.rows.slice(1));
+      const others = _M.filter(m=>String(m[0]||'')!==giaiName);
+      _M = [...others, ...normalized];
+    }
+    const d2 = await gGet({ action:'results', giai: giaiName }).catch(()=>({}));
+    if (d2?.rows?.length) {
+      const normalized2 = d2.rows.slice(1);
+      const others2 = _R.filter(r=>String(r[1]||'')!==giaiName);
+      _R = [...others2, ...normalized2];
+      _dK = new Set(_R.map(r=>`${String(r[1]||'')}|${String(r[3]||'')}|${String(r[4]||'')}`));
+      _dkBangCode = new Set(_R.map(r=>`${String(r[3]||'')}|${String(r[4]||'')}`));
+    }
+    bkRender();
+  } catch(e) {
+    console.error('[bkRefresh]', e);
+    bkRender(); // vẫn render với data cũ
+  } finally {
+    if (btn) btn.textContent = '↻ Làm mới';
+  }
 }
 
 // ── Tính BXH vòng bảng → trả seeds theo mỗi bảng ────────────────
 function _bkCalcSeeds(giaiId, nd) {
-  const allM = _M.filter(m => String(m[0]||'')===giaiId && String(m[1]||'')===nd);
+  // _M[0] stores giaiName — resolve giaiId → giaiName before filtering
+  const giaiName = _resolveGiaiName(giaiId) || giaiId;
+  const allM = _M.filter(m => String(m[0]||'')===giaiName && String(m[1]||'')===nd);
   const bangM = allM.filter(m => {
     const v = String(m[9]||'');
     return !v || v==='Vòng bảng' || v.includes('bảng');
@@ -4379,7 +4435,8 @@ function bkRender() {
     return;
   }
   const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
-  const allM = _M.filter(m=>String(m[0]||'')===_bkGiai&&String(m[1]||'')===_bkNd);
+  const _giaiName = _resolveGiaiName(_bkGiai) || _bkGiai;
+  const allM = _M.filter(m=>String(m[0]||'')===_giaiName&&String(m[1]||'')===_bkNd);
   const koMatches = allM.filter(m=>{
     const v=String(m[9]||''); return v&&v!=='Vòng bảng'&&!v.includes('bảng');
   });
@@ -4431,8 +4488,9 @@ function bkRender() {
     html += `<div class="bk-round-title ${round.cls}">${round.name}</div>`;
     html += '<div class="bk-slots">';
     round.matches.forEach(m => {
-      // Check if match has result in koMatches
-      const koM = koMatches.find(km=>String(km[3]||'')===m.code);
+      // Check if match has result in koMatches (check both m[3]=code and m[9]=round)
+      const koM = koMatches.find(km=>String(km[3]||'')===m.code || 
+        (String(km[9]||'')===round.name && String(km[3]||'')===m.code));
       const done = koM && isMatchDone(koM);
       const live = koM && _lK.has(`${_bkNd}|${koM[2]||''}|${m.code}`);
       const fs = done ? getFinalScore(koM) : null;
@@ -4537,7 +4595,8 @@ function bkClearOverride(code) {
 async function bkSave() {
   if (!_bkGiai || !_bkNd) { toast('Chọn giải và nội dung trước', 'er'); return; }
   const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
-  const allM = _M.filter(m=>String(m[0]||'')===_bkGiai&&String(m[1]||'')===_bkNd);
+  const _giaiName = _resolveGiaiName(_bkGiai) || _bkGiai;
+  const allM = _M.filter(m=>String(m[0]||'')===_giaiName&&String(m[1]||'')===_bkNd);
   const koMatches = allM.filter(m=>{
     const v=String(m[9]||''); return v&&v!=='Vòng bảng'&&!v.includes('bảng');
   });
