@@ -1681,6 +1681,32 @@ let _rrRows=[], _csvM=[], _csvP=[];                // batch data
 let _dtimer=null, _rtimer=null, _dbt=null;         // timers
 let _curTourn=null;                                // giải đang xem (khai báo sớm để dùng trong polling)
 
+// ── buildLiveFromRows: build _lK + _liveScores từ LiveScore rows ──
+// Chỉ lấy row có status = 'playing' (hoặc rỗng — dữ liệu cũ trước v9)
+// Row status='finished' → đã hoàn thành, KHÔNG tính là live
+function _buildLiveFromRows(rows) {
+  const newLK = new Set();
+  const newLS = {};
+  (rows||[]).forEach(r => {
+    const key    = String(r[0]||'');
+    const status = String(r[9]||''); // r[9] = Trạng thái (v9+), rỗng = cũ (coi như playing)
+    if (!key) return;
+    if (status === 'finished') return; // Đã hoàn thành → bỏ qua
+    newLK.add(key);
+    newLS[key] = {
+      scoreA:  r[3]!==''&&r[3]!==null ? Number(r[3]) : null,
+      scoreB:  r[4]!==''&&r[4]!==null ? Number(r[4]) : null,
+      teamA:   String(r[2]||''),
+      teamB:   String(r[5]||''),
+      game:    String(r[7]||''),
+      status,
+      updatedAt: String(r[8]||''),
+    };
+  });
+  _lK = newLK;
+  _liveScores = newLS;
+}
+
 // ── buildDkFromResults: build _dK, _dkBangCode, _dkScores từ KetQua rows ──
 // Gọi sau mỗi lần có resultData mới
 function buildDkFromResults(rRows) {
@@ -1850,21 +1876,11 @@ function startLivePolling() {
         : (_curTourn ? String(_curTourn[1]||'') : '');
       const ld = await gGet({ action:'live', code:'all', giai: giaiName });
       const rows = ld.rows?.slice(1) || [];
-      _lK = new Set(rows.map(r=>String(r[0]||'')));
-      // Build live scores map: key → {scoreA, scoreB, teamA, teamB, game}
-      const newScores = {};
-      rows.forEach(r => {
-        const key = String(r[0]||'');
-        if (key) newScores[key] = {
-          teamA: String(r[2]||''), scoreA: r[3]!==''?Number(r[3]):null,
-          scoreB: r[4]!==''?Number(r[4]):null, teamB: String(r[5]||''),
-          game: String(r[7]||''), updatedAt: String(r[8]||'')
-        };
-      });
-      _liveScores = newScores;
+      // Chỉ lấy row 'playing' (bỏ 'finished') 
+      _buildLiveFromRows(rows);
       // Re-render chỉ khi đang xem bảng đấu
       if (_curPage === 'tournaments' && _curNd && _curTourn) {
-        renderBangList(giaiId, _curNd);
+        renderBangList(_curGiaiId||'', _curNd);
       }
     } catch(e) {}
   }, 8000);
@@ -2021,14 +2037,9 @@ async function prefetchAll() {
       buildDkFromResults(rRes.rows.slice(1));
       cacheSet('results_' + giaiParam, rRes.rows.slice(1));
     }
-    // Live → build _lK, _liveScores ngay
+    // Live → build _lK, _liveScores ngay (chỉ lấy 'playing', bỏ 'finished')
     if (lRes.rows?.length > 1) {
-      _lK = new Set(lRes.rows.slice(1).map(r => String(r[0]||'')));
-      lRes.rows.slice(1).forEach(r => {
-        const key = String(r[0]||'');
-        if (key) _liveScores[key] = { scoreA: Number(r[3])||0, scoreB: Number(r[4])||0,
-          teamA: String(r[2]||''), teamB: String(r[5]||''), game: String(r[7]||'') };
-      });
+      _buildLiveFromRows(lRes.rows.slice(1));
     }
 
     populateTournamentDropdowns();
@@ -2083,17 +2094,8 @@ async function updateLiveScores() {
     const giai = ROLE === 'manager' ? MY_GIAI : '';
     const d = await gGet({ action: 'live', code: 'all', giai });
     if (!d.rows?.length) return;
-    const newLK = new Set();
-    const newLS = {};
-    d.rows.slice(1).forEach(r => {
-      const key = String(r[0]||'');
-      if (!key) return;
-      newLK.add(key);
-      newLS[key] = { scoreA:Number(r[3])||0, scoreB:Number(r[4])||0,
-        teamA:String(r[2]||''), teamB:String(r[5]||''), game:String(r[7]||'') };
-    });
-    _lK = newLK;
-    _liveScores = newLS;
+    // Chỉ lấy row 'playing' (bỏ 'finished')
+    _buildLiveFromRows(d.rows.slice(1));
     // Re-render nếu đang ở trang liên quan
     if (_curPage === 'tournaments' && document.getElementById('tv-nd')?.style.display !== 'none') {
       renderBangList(_curGiaiId||'', _curNd||'');
@@ -4016,12 +4018,7 @@ async function loadMatchesCache(giaiId='') {
     }
     if (rd.rows?.length > 1) buildDkFromResults(rd.rows.slice(1));
     if (ld.rows?.length > 1) {
-      _lK = new Set(ld.rows.slice(1).map(r=>String(r[0]||'')));
-      ld.rows.slice(1).forEach(r => {
-        const key = String(r[0]||'');
-        if (key) _liveScores[key] = { scoreA:Number(r[3])||0, scoreB:Number(r[4])||0,
-          teamA:String(r[2]||''), teamB:String(r[5]||''), game:String(r[7]||'') };
-      });
+      _buildLiveFromRows(ld.rows.slice(1));
     }
     dedupM(); // Safety net
     console.log('[loadMatchesCache] giaiName:', giaiName, '→ M:', _M.length, 'done:', _dkBangCode.size);
@@ -5795,7 +5792,7 @@ async function loadMatches() {
       if (giaiName) cacheSet('matches_' + giaiName, newRows);
     }
     buildDkFromResults(rd.rows?.slice(1)||[]);
-    _lK = new Set((ld.rows?.slice(1)||[]).map(r => String(r[0]||'')));
+    _buildLiveFromRows((ld.rows?.slice(1)||[]));
     onMGiaiChange(true);
     filterMatches();
   } catch(e) { toast('Lỗi kết nối — thử lại','er'); }
