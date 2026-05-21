@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<!-- Pickleball v6 | Optimized 2026-05-21 | Batch API | Debounce | Timeout | No-cache -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Admin v5 — Referee Pickleball / DA NANG ®</title>
@@ -1707,20 +1708,22 @@ function showApp() {
   // Tải dữ liệu nền một lần để cache
   prefetchAll();
   // Bắt đầu realtime refresh 30s dashboard + 8s live scores
-  _dtimer = setInterval(() => { if(_curPage==='dashboard') loadDash(); }, 30000);
+  _dtimer = setInterval(() => { if(_curPage==='dashboard') loadDash(); }, 30000); // Auto-refresh 30s
   startLivePolling();
 }
 
 // ── Live polling: cập nhật _lK + _liveScores mỗi 8 giây ──
+// Dùng batch endpoint: 1 request thay vì 1 request riêng
 function startLivePolling() {
   if (_liveTimer) return;
   _liveTimer = setInterval(async () => {
     try {
-      const giaiId   = _curTourn ? String(_curTourn[0]||'') : '';
-      const giaiName = _curTourn ? String(_curTourn[1]||'') : '';
-      const giai     = giaiName || giaiId;
-      if (!giai || !GS) return;
-      const ld = await gGet({action:'live', code:'all', giai});
+      if (!GS) return;
+      // Manager: chỉ poll giải mình. Admin: poll giải đang xem (hoặc tất cả nếu chưa chọn)
+      const giaiName = ROLE === 'manager'
+        ? (_resolveGiaiName(MY_GIAI) || MY_GIAI)
+        : (_curTourn ? String(_curTourn[1]||'') : '');
+      const ld = await gGet({ action:'live', code:'all', giai: giaiName });
       const rows = ld.rows?.slice(1) || [];
       _lK = new Set(rows.map(r=>String(r[0]||'')));
       // Build live scores map: key → {scoreA, scoreB, teamA, teamB, game}
@@ -1752,7 +1755,7 @@ function doLogout() {
 //  PREFETCH — tải nền 1 lần, sau đó dùng cache
 // ════════════════════════════════════════════════════════════════
 const _cache = {}; // { key: { ts, data } }
-const CACHE_TTL = 60000; // 60s
+const CACHE_TTL = 90000; // 90s — đủ mới cho dữ liệu giải
 
 function cacheGet(key) {
   const c = _cache[key];
@@ -1765,12 +1768,18 @@ async function prefetchAll() {
   // Tải song song: Tournaments + Matches + Results + Live (1 roundtrip)
   const giaiParam = ROLE === 'manager' ? MY_GIAI : '';
   try {
-    const [tRes, mRes, rRes, lRes] = await Promise.all([
-      gGet({ action: 'tournaments' }).catch(() => ({})),
-      gGet({ action: 'matches', giai: giaiParam }).catch(() => ({})),
-      gGet({ action: 'results', giai: giaiParam }).catch(() => ({})),
-      gGet({ action: 'live',   code: 'all', giai: giaiParam }).catch(() => ({}))
-    ]);
+    // BATCH: 1 request thay vì 4 request song song → giảm 75% round-trips GAS
+    const giaiQ = giaiParam ? `&giai=${encodeURIComponent(giaiParam)}` : '';
+    const batch = await gGet({
+      action: 'batch',
+      actions: 'tournaments,matches,results,live',
+      code: 'all',
+      giai: giaiParam
+    }).catch(() => ({}));
+    const tRes = batch.tournaments || {};
+    const mRes = batch.matches    || {};
+    const rRes = batch.results    || {};
+    const lRes = batch.live       || {};
 
     // Tournaments
     if (tRes.rows?.length) {
@@ -1841,7 +1850,8 @@ function nav(p) {
 async function updateLiveScores() {
   if (!GS) return;
   try {
-    const d = await gGet({ action: 'live', code: 'all' });
+    const giai = ROLE === 'manager' ? MY_GIAI : '';
+    const d = await gGet({ action: 'live', code: 'all', giai });
     if (!d.rows?.length) return;
     const newLK = new Set();
     const newLS = {};
@@ -1864,10 +1874,24 @@ async function updateLiveScores() {
 // ════════════════════════════════════════════════════════════════
 //  GAS HELPERS
 // ════════════════════════════════════════════════════════════════
-async function gGet(p) {
+async function gGet(p, timeout=25000) {
   const qs = Object.entries(p).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-  const r = await fetch(`${GS}?${qs}`);
-  return r.json();
+  // Thêm timestamp để tránh browser cache GAS response
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const r = await fetch(`${GS}?${qs}&_t=${Date.now()}`, {
+      redirect: 'follow',
+      signal: ctrl.signal,
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    clearTimeout(tid);
+    return r.json();
+  } catch(e) {
+    clearTimeout(tid);
+    if (e.name === 'AbortError') throw new Error('GAS timeout sau ' + (timeout/1000) + 's');
+    throw e;
+  }
 }
 async function gPost(b) {
   // GAS Web App: POST với Content-Type text/plain để tránh preflight CORS
@@ -2003,12 +2027,14 @@ async function loadDash() {
       ? gGet({ action:'matches', giai: giaiName }).catch(() => ({}))
       : Promise.resolve(null);
 
+    // Dashboard API trả về đủ thông tin. Tải matches song song chỉ khi không có cache
     const [d, mRes] = await Promise.all([
       gGet({ action: 'dashboard', adminCode: CODE, giai: giaiName, nd, bang }),
       matchPromise
     ]);
+    if (!d) { toast('Không kết nối được GAS', 'er'); return; }
 
-    if (!d.ok) { toast('Lỗi dashboard: ' + d.reason, 'er'); return; }
+    if (!d?.ok) { toast('Lỗi dashboard: ' + (d?.reason||'Không kết nối'), 'er'); return; }
     _dashData = d;
 
     // Cập nhật _M từ GAS (nếu chọn giải và chưa cache)
