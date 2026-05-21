@@ -1668,6 +1668,11 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 let GS='', CODE='', NAME='', ROLE='', MY_GIAI=''; // thông tin đăng nhập
 let _T=[],_U=[],_M=[],_R=[],_P=[];                // dữ liệu cache
 let _dK=new Set(), _lK=new Set();                  // done keys, live keys
+let _dkBangCode=new Set();                         // Set "bang|code" đã có kết quả
+let _dkScores={};                                  // { "bang|code": {scoreA,scoreB,...} }
+let _curGiaiId='', _curNd='', _curPage='dashboard'; // navigation state
+let _bkGiai='', _bkNd='', _bkGiaiName='';          // bracket state
+let _bkOverrides={};                               // bracket manual overrides
 let _liveScores={};                                // key→{scoreA,scoreB,teamA,teamB,game} live scores
 let _liveTimer=null;                               // auto-refresh live every 8s
 let _dashData=null;                                // cache dashboard
@@ -4249,8 +4254,7 @@ async function cleanupDuplicateMatches() {
 // Key: bk_tree_<giaiId>_<nd>
 // Value: { [matchCode]: { teamA, teamB } }  (chỉ lưu phần chỉnh tay)
 
-let _bkGiai = '', _bkNd = '', _bkGiaiName = '';
-let _bkOverrides = {}; // {code: {teamA, teamB}}
+// _bkGiai, _bkNd, _bkGiaiName, _bkOverrides declared at top level
 
 function onBkGiaiChange() {
   const sel = document.getElementById('bk-giai');
