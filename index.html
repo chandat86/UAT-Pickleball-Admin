@@ -762,19 +762,33 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <button class="rfbtn" id="dash-rf" onclick="loadDash()" style="white-space:nowrap">↻ Làm mới</button>
       </div>
       <!-- Thanh trạng thái kết nối GAS — ẩn khi OK -->
-      <div id="gas-status-bar" style="display:none;align-items:center;gap:8px;padding:8px 14px;
+      <div id="gas-status-bar" style="display:none;flex-direction:column;gap:8px;padding:10px 14px;
         background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;
         margin-bottom:12px;font-size:12px;color:#f87171">
-        <span style="font-size:15px">⚠️</span>
-        <span id="gas-status-msg">Không kết nối được GAS</span>
-        <span style="margin-left:auto;display:flex;gap:6px">
-          <button onclick="_retryConnect()" style="font-size:11px;padding:3px 10px;
-            background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
-            border-radius:5px;color:#f87171;cursor:pointer;font-family:inherit">Thử lại</button>
-          <button onclick="document.getElementById('gas-status-bar').style.display='none'"
-            style="font-size:11px;padding:3px 8px;background:transparent;border:none;
-            color:#f87171;cursor:pointer">✕</button>
-        </span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px">⚠️</span>
+          <span id="gas-status-msg">Không kết nối được GAS</span>
+          <span style="margin-left:auto;display:flex;gap:6px">
+            <button onclick="_retryConnect()" style="font-size:11px;padding:3px 10px;
+              background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+              border-radius:5px;color:#f87171;cursor:pointer;font-family:inherit">🔄 Thử lại</button>
+            <button onclick="_showUrlUpdate()" style="font-size:11px;padding:3px 10px;
+              background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+              border-radius:5px;color:#f87171;cursor:pointer;font-family:inherit">🔗 Đổi URL</button>
+            <button onclick="document.getElementById('gas-status-bar').style.display='none'"
+              style="font-size:11px;padding:3px 8px;background:transparent;border:none;
+              color:#f87171;cursor:pointer">✕</button>
+          </span>
+        </div>
+        <div id="gas-url-edit" style="display:none;gap:6px;align-items:center">
+          <input id="gas-url-input" class="inp" placeholder="Dán URL GAS mới vào đây..."
+            style="flex:1;font-size:11px;padding:5px 8px" />
+          <button onclick="_applyNewUrl()" style="font-size:11px;padding:4px 12px;
+            background:var(--ac);color:#fff;border:none;border-radius:5px;cursor:pointer">✓ Áp dụng</button>
+        </div>
+        <div style="font-size:10px;color:rgba(248,113,113,.7)">
+          💡 Sau mỗi lần deploy lại GAS → URL mới → cần đổi URL tại đây hoặc đăng nhập lại
+        </div>
       </div>
 
       <!-- ── FILTER BAR ── -->
@@ -1881,7 +1895,7 @@ function _showGasError(msg) {
   const bar = document.getElementById('gas-status-bar');
   const msgEl = document.getElementById('gas-status-msg');
   if (bar)   bar.style.display = 'flex';
-  if (msgEl) msgEl.textContent = msg || 'Không kết nối được GAS — kiểm tra URL deploy';
+  if (msgEl) msgEl.textContent = msg || 'Không kết nối được GAS — kiểm tra URL deploy (GAS mới deploy sẽ có URL mới)';
   // KHÔNG toast — chỉ dùng status bar để tránh spam khi auto-refresh
   console.warn('[GAS]', _failCount, 'lần thất bại:', msg);
 }
@@ -1897,12 +1911,53 @@ function _showGasOk() {
   _prefetchFailed = false;
 }
 
+function _showUrlUpdate() {
+  const box = document.getElementById('gas-url-edit');
+  const inp = document.getElementById('gas-url-input');
+  if (!box) return;
+  box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+  if (inp) { inp.value = GS || ''; inp.focus(); inp.select(); }
+}
+
+async function _applyNewUrl() {
+  const inp = document.getElementById('gas-url-input');
+  const newUrl = (inp?.value || '').trim();
+  if (!newUrl || !newUrl.startsWith('https://')) {
+    toast('URL không hợp lệ — phải bắt đầu bằng https://', 'er'); return;
+  }
+  GS = newUrl;
+  // Lưu vào localStorage để dùng lại
+  try {
+    const saved = JSON.parse(localStorage.getItem('pb_adm3')||'{}');
+    saved.u = newUrl;
+    localStorage.setItem('pb_adm3', JSON.stringify(saved));
+  } catch(e) {}
+  document.getElementById('gas-url-edit').style.display = 'none';
+  toast('✅ Đã cập nhật URL GAS, đang kết nối lại...', 'in');
+  await _retryConnect();
+}
+
 async function _retryConnect() {
   _failCount = 0;
   _prefetchFailed = false;
   const bar = document.getElementById('gas-status-bar');
   const msgEl = document.getElementById('gas-status-msg');
-  if (msgEl) msgEl.textContent = '🔄 Đang kết nối lại...';
+  if (msgEl) msgEl.textContent = '🔄 Đang kiểm tra kết nối...';
+  if (!GS) {
+    if (msgEl) msgEl.textContent = '❌ Chưa có URL GAS — đăng xuất và đăng nhập lại với URL mới';
+    return;
+  }
+  // Test ping trước
+  try {
+    const ping = await fetch(`${GS}?action=tournaments&_t=${Date.now()}`, { redirect:'follow' });
+    const txt = await ping.text();
+    if (!txt.includes('"ok"')) throw new Error('GAS trả về response không hợp lệ');
+    if (msgEl) msgEl.textContent = '🔄 Kết nối được, đang tải dữ liệu...';
+  } catch(pingErr) {
+    if (msgEl) msgEl.textContent = `❌ GAS không phản hồi: ${pingErr.message}. Kiểm tra URL deploy mới nhất.`;
+    _failCount = 1;
+    return;
+  }
   await prefetchAll();
 }
 // ───────────────────────────────────────────────────────────────
