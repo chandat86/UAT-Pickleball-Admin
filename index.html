@@ -705,6 +705,21 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         </div>
         <button class="rfbtn" id="dash-rf" onclick="loadDash()" style="white-space:nowrap">↻ Làm mới</button>
       </div>
+      <!-- Thanh trạng thái kết nối GAS — ẩn khi OK -->
+      <div id="gas-status-bar" style="display:none;align-items:center;gap:8px;padding:8px 14px;
+        background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;
+        margin-bottom:12px;font-size:12px;color:#f87171">
+        <span style="font-size:15px">⚠️</span>
+        <span id="gas-status-msg">Không kết nối được GAS</span>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button onclick="_retryConnect()" style="font-size:11px;padding:3px 10px;
+            background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+            border-radius:5px;color:#f87171;cursor:pointer;font-family:inherit">Thử lại</button>
+          <button onclick="document.getElementById('gas-status-bar').style.display='none'"
+            style="font-size:11px;padding:3px 8px;background:transparent;border:none;
+            color:#f87171;cursor:pointer">✕</button>
+        </span>
+      </div>
 
       <!-- ── FILTER BAR ── -->
       <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
@@ -1708,7 +1723,13 @@ function showApp() {
   // Tải dữ liệu nền một lần để cache
   prefetchAll();
   // Bắt đầu realtime refresh 30s dashboard + 8s live scores
-  _dtimer = setInterval(() => { if(_curPage==='dashboard') loadDash(); }, 30000); // Auto-refresh 30s
+  _dtimer = setInterval(() => {
+    if (_curPage==='dashboard') {
+      // Nếu lỗi >5 lần liên tiếp → giảm tần suất retry xuống 2 phút (không spam)
+      if (_failCount > 5) return;
+      loadDash();
+    }
+  }, 30000); // Auto-refresh 30s
   startLivePolling();
 }
 
@@ -1764,7 +1785,43 @@ function cacheGet(key) {
 }
 function cacheSet(key, data) { _cache[key] = { ts: Date.now(), data }; }
 
-let _prefetchFailed = false; // Flag để tránh toast lỗi trùng lặp
+// ── Connection status helpers ──────────────────────────────────
+let _gasConnected = true;    // false khi mất kết nối
+let _failCount    = 0;       // số lần thất bại liên tiếp
+let _prefetchFailed = false;
+
+function _showGasError(msg) {
+  _gasConnected = false;
+  _failCount++;
+  const bar = document.getElementById('gas-status-bar');
+  const msgEl = document.getElementById('gas-status-msg');
+  if (bar)   bar.style.display = 'flex';
+  if (msgEl) msgEl.textContent = msg || 'Không kết nối được GAS — kiểm tra URL deploy';
+  // KHÔNG toast — chỉ dùng status bar để tránh spam khi auto-refresh
+  console.warn('[GAS]', _failCount, 'lần thất bại:', msg);
+}
+
+function _showGasOk() {
+  if (!_gasConnected || _failCount > 0) {
+    const bar = document.getElementById('gas-status-bar');
+    if (bar) bar.style.display = 'none';
+    if (_failCount > 0) toast('✅ Đã kết nối lại GAS', 'in');
+  }
+  _gasConnected = true;
+  _failCount    = 0;
+  _prefetchFailed = false;
+}
+
+async function _retryConnect() {
+  _failCount = 0;
+  _prefetchFailed = false;
+  const bar = document.getElementById('gas-status-bar');
+  const msgEl = document.getElementById('gas-status-msg');
+  if (msgEl) msgEl.textContent = '🔄 Đang kết nối lại...';
+  await prefetchAll();
+}
+// ───────────────────────────────────────────────────────────────
+
 async function prefetchAll() {
   _prefetchFailed = false;
   const giaiParam = ROLE === 'manager' ? MY_GIAI : '';
@@ -1823,18 +1880,14 @@ async function prefetchAll() {
 
     populateTournamentDropdowns();
     if (document.getElementById('tv-list')) renderTournCards(_T);
+    _showGasOk(); // Ẩn error bar khi kết nối thành công
     console.log('[prefetch] OK — T:', _T.length, 'M:', _M.length,
       'done:', _dkBangCode.size, 'live:', _lK.size);
   } catch(e) {
     _prefetchFailed = true;
-    console.error('[prefetch] Error:', e.message);
     const isTimeout = (e.message||'').includes('timeout');
-    toast(isTimeout
-      ? '⏱ GAS phản hồi chậm — thử lại sau'
-      : '❌ Không kết nối được GAS. Kiểm tra URL deploy.',
-      'er');
+    _showGasError(isTimeout ? '⏱ GAS phản hồi chậm — thử lại sau' : 'Không kết nối được GAS. Kiểm tra URL deploy');
   }
-  // Vẫn gọi loadDash để render UI (dùng cache nếu có), nhưng không toast lỗi lần 2
   loadDash();
 }
 
@@ -1851,7 +1904,7 @@ function nav(p) {
   window.scrollTo(0, 0);
   clearInterval(_dtimer);
   const loaders = {
-    dashboard: () => { loadDash(); _dtimer = setInterval(loadDash, 30000); },
+    dashboard: () => { loadDash(); _dtimer = setInterval(() => { if(_failCount<=5) loadDash(); }, 30000); },
     tournaments: loadTournaments,
     standings: () => {},
     assign: loadAssign,
@@ -1869,7 +1922,7 @@ function nav(p) {
 }
 
 async function updateLiveScores() {
-  if (!GS) return;
+  if (!GS || _failCount > 3) return; // Stop polling khi GAS đang offline
   try {
     const giai = ROLE === 'manager' ? MY_GIAI : '';
     const d = await gGet({ action: 'live', code: 'all', giai });
@@ -2105,6 +2158,7 @@ async function loadDash() {
         });
       }
     } catch(eDk) { console.warn('[loadDash] _dK update warn:', eDk); }
+    _showGasOk(); // Kết nối thành công → ẩn error bar
     document.getElementById('s-total').textContent = s.totalMatches || 0;
     document.getElementById('s-live').textContent  = s.liveMatches  || 0;
     document.getElementById('s-done').textContent  = s.doneMatches  || 0;
@@ -2314,14 +2368,12 @@ async function loadDash() {
     const isTimeout = (e.message||'').includes('timeout');
     const isNetwork = isTimeout || e instanceof TypeError || (e.message||'').includes('fetch') || (e.message||'').includes('network');
     if (isNetwork) {
-      // Chỉ toast nếu prefetch chưa báo lỗi rồi (tránh 2 toast cùng lúc)
-      if (!_prefetchFailed) {
-        toast(isTimeout ? '⏱ GAS timeout — GSheet đang bận, thử lại sau' : '❌ Lỗi kết nối GAS — kiểm tra URL deploy', 'er');
-      }
+      _showGasError(isTimeout ? 'GAS timeout — GSheet đang bận' : 'Không kết nối được GAS — kiểm tra URL deploy');
     } else {
+      // Lỗi JS thực sự (không phải network) — vẫn toast
       toast('Lỗi: ' + (e.message||e), 'er');
     }
-    _prefetchFailed = false; // Reset sau khi đã xử lý
+    _prefetchFailed = false;
   }
   finally { if(btn) btn.textContent = '↻ Làm mới'; }
 }
