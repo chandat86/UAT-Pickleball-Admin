@@ -426,6 +426,60 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .tb.on{background:var(--bg2);color:var(--ac);box-shadow:var(--shadow)}
 .tpanel{display:none}.tpanel.on{display:block}
 
+
+/* ═══ BRACKET / CÂY THI ĐẤU ═══ */
+.bk-wrap{display:flex;gap:0;align-items:stretch;min-width:900px}
+.bk-round{display:flex;flex-direction:column;align-items:center;min-width:200px;padding:0 8px}
+.bk-round-title{font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;
+  letter-spacing:.5px;padding:6px 14px;border-radius:20px;background:rgba(14,165,233,.12);
+  margin-bottom:16px;white-space:nowrap}
+.bk-round-title.bk-vb{background:rgba(99,102,241,.12);color:#818cf8}
+.bk-round-title.bk-tk{background:rgba(249,115,22,.12);color:#fb923c}
+.bk-round-title.bk-bk{background:rgba(16,185,129,.12);color:#34d399}
+.bk-round-title.bk-ck{background:rgba(234,179,8,.12);color:#facc15}
+.bk-round-title.bk-h3{background:rgba(168,85,247,.12);color:#c084fc}
+.bk-slots{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:8px}
+.bk-match{position:relative;border:1px solid var(--bdr);border-radius:10px;
+  background:var(--bg2);overflow:hidden;min-width:180px;cursor:pointer;
+  transition:border-color .2s,box-shadow .2s;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.bk-match:hover{border-color:var(--ac);box-shadow:0 0 0 2px rgba(14,165,233,.15)}
+.bk-match.bk-done{border-color:var(--gn);background:rgba(16,185,129,.04)}
+.bk-match.bk-live{border-color:var(--or);animation:pulse-border 2s infinite}
+.bk-match-code{font-size:9px;font-weight:700;color:var(--tx3);padding:4px 10px 2px;
+  letter-spacing:.5px;text-transform:uppercase;display:flex;justify-content:space-between}
+.bk-team{display:flex;align-items:center;justify-content:space-between;
+  padding:6px 10px;gap:6px;border-top:1px solid var(--bdr)}
+.bk-team:first-of-type{border-top:none}
+.bk-team-name{font-size:12px;color:var(--tx2);flex:1;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.bk-team-name.bk-winner{color:var(--gn);font-weight:700}
+.bk-team-name.bk-tbd{color:var(--tx4);font-style:italic}
+.bk-score{font-size:13px;font-weight:700;font-family:var(--mo);color:var(--tx);
+  min-width:20px;text-align:center}
+.bk-score.bk-win{color:var(--gn)}
+.bk-connector{flex:1;display:flex;align-items:center;justify-content:center;
+  padding:0 4px;min-width:24px}
+.bk-connector-line{width:100%;height:1px;background:var(--bdr2)}
+.bk-vs-badge{font-size:9px;font-weight:700;color:var(--tx4);
+  padding:2px 6px;border:1px solid var(--bdr2);border-radius:10px;background:var(--bg3)}
+.bk-tbd-slot{border:1px dashed var(--bdr);border-radius:10px;
+  background:var(--bg3);min-width:180px;padding:14px 10px;
+  text-align:center;font-size:11px;color:var(--tx4);opacity:.6}
+/* Edit overlay */
+.bk-edit-badge{font-size:9px;background:var(--ac);color:#fff;border-radius:4px;
+  padding:1px 5px;margin-left:4px;opacity:0;transition:opacity .2s}
+.bk-match:hover .bk-edit-badge{opacity:1}
+@keyframes pulse-border{0%,100%{border-color:var(--or)}50%{border-color:#fbbf24}}
+
+/* Bracket seeding tags under group cards */
+.bk-seed-row{display:flex;align-items:center;gap:6px;padding:4px 0;
+  border-top:1px solid var(--bdr);font-size:11px}
+.bk-seed-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;
+  background:rgba(14,165,233,.1);color:var(--ac);white-space:nowrap}
+.bk-seed-badge.s1{background:rgba(234,179,8,.15);color:#ca8a04}
+.bk-seed-badge.s2{background:rgba(99,102,241,.12);color:#6366f1}
+.bk-seed-badge.s3{background:rgba(16,185,129,.12);color:#10b981}
+
 /* ═══ BXH (Standings) ═══ */
 .bxh{width:100%;border-collapse:collapse;font-size:13px}
 .bxh th{
@@ -631,6 +685,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <button class="mni" data-p="tournaments"><div class="mni-ic">🏆</div><span>Giải</span></button>
     <button class="mni" data-p="matches"><div class="mni-ic">📋</div><span>Lịch</span></button>
     <button class="mni" data-p="standings"><div class="mni-ic">📈</div><span>BXH</span></button>
+    <button class="mni" data-p="bracket"><div class="mni-ic">🏆</div><span>Cây</span></button>
     <button class="mni" id="mob-more-btn" onclick="toggleMobMore()"><div class="mni-ic">☰</div><span>Thêm</span></button>
   </div>
 </div>
@@ -670,6 +725,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <div class="nl">Giải đấu</div>
       <button class="ni" data-p="tournaments" id="nav-tourn"><span class="ic">🏆</span><span>Quản lý giải</span></button>
       <button class="ni" data-p="standings"><span class="ic">📈</span><span>Bảng xếp hạng</span></button>
+      <button class="ni" data-p="bracket"><span class="ic">🏆</span><span>Cây thi đấu</span></button>
       <div class="nsep"></div>
       <div class="nl">Điều hành</div>
       <button class="ni" data-p="assign"><span class="ic">📌</span><span>Phân công TT</span></button>
@@ -894,6 +950,34 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         </div>
 
         <div id="bang-list" style="display:flex;flex-direction:column;gap:14px"></div>
+      </div>
+    </div>
+
+
+    <!-- ══ CÂY THI ĐẤU (BRACKET) ══ -->
+    <div class="page" id="page-bracket">
+      <div class="ph">
+        <div>
+          <div class="ptitle">🏆 Cây thi đấu</div>
+          <div class="psub">Tự động từ BXH vòng bảng · Có thể chỉnh tay</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="rfbtn" onclick="bkRefresh()">↻ Làm mới</button>
+          <button class="btn bp bsm" onclick="bkAutoFill()">⚡ Tự động điền</button>
+          <button class="btn bsm" style="background:var(--gn);color:#fff" onclick="bkSave()">💾 Lưu cây</button>
+        </div>
+      </div>
+      <!-- Filter -->
+      <div class="fbar" style="flex-wrap:wrap;margin-bottom:16px">
+        <label>🏆</label>
+        <select id="bk-giai" onchange="onBkGiaiChange()" style="min-width:160px"><option value="">— Chọn giải —</option></select>
+        <span class="farrow">›</span>
+        <select id="bk-nd" onchange="onBkNdChange()" style="min-width:140px"><option value="">— Nội dung —</option></select>
+        <span style="margin-left:auto;font-size:12px;color:var(--tx3)" id="bk-status"></span>
+      </div>
+      <!-- Bracket canvas -->
+      <div id="bk-wrap" style="overflow-x:auto;overflow-y:visible;padding-bottom:20px">
+        <div class="empty"><div class="ei">🏆</div><p>Chọn giải và nội dung thi đấu</p></div>
       </div>
     </div>
 
@@ -1907,6 +1991,7 @@ function nav(p) {
     dashboard: () => { loadDash(); _dtimer = setInterval(() => { if(_failCount<=5) loadDash(); }, 30000); },
     tournaments: loadTournaments,
     standings: () => {},
+    bracket:   () => { bkInit(); },
     assign: loadAssign,
     matches: loadMatches,
     results: loadResults,
@@ -2047,7 +2132,7 @@ function emptyRow(colspan, icon, msg) { return `<tr><td colspan="${colspan}"><di
 
 // Điền tất cả dropdown giải đấu
 function populateTournamentDropdowns() {
-  const ids = ['dash-giai','bxh-giai','asgn-giai','clear-giai','m-giai','r-giai','u-giai','p-giai','rr-giai','m-giai-i','assign-giai'];
+  const ids = ['dash-giai','bxh-giai','asgn-giai','clear-giai','m-giai','r-giai','u-giai','p-giai','rr-giai','m-giai-i','assign-giai','bk-giai'];
   const tourns = ROLE === 'manager' ? _T.filter(r => String(r[0]||'') === MY_GIAI) : _T;
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -4047,6 +4132,473 @@ function renderBracket() {
   wrap.innerHTML = html;
 }
 
+
+
+// ════════════════════════════════════════════════════════════════
+//  CÂY THI ĐẤU (BRACKET) — Full interactive
+// ════════════════════════════════════════════════════════════════
+
+// Lưu cây thi đấu đã edit vào localStorage
+// Key: bk_tree_<giaiId>_<nd>
+// Value: { [matchCode]: { teamA, teamB } }  (chỉ lưu phần chỉnh tay)
+
+let _bkGiai = '', _bkNd = '', _bkGiaiName = '';
+let _bkOverrides = {}; // {code: {teamA, teamB}}
+
+function onBkGiaiChange() {
+  const sel = document.getElementById('bk-giai');
+  _bkGiai = sel.value;
+  _bkGiaiName = sel.options[sel.selectedIndex]?.text || '';
+  // Populate nd
+  const ndSel = document.getElementById('bk-nd');
+  const nds = [...new Set(_M.filter(m=>String(m[0]||'')===_bkGiai).map(m=>String(m[1]||'')).filter(Boolean))];
+  ndSel.innerHTML = '<option value="">— Nội dung —</option>' +
+    nds.map(n=>`<option value="${n}">${n}</option>`).join('');
+  _bkNd = '';
+  document.getElementById('bk-wrap').innerHTML = '<div class="empty"><div class="ei">🏆</div><p>Chọn nội dung thi đấu</p></div>';
+}
+
+function onBkNdChange() {
+  _bkNd = document.getElementById('bk-nd').value;
+  _bkOverrides = _bkLoadOverrides();
+  bkRender();
+}
+
+function bkInit() {
+  // Sync giai selector với _T
+  const sel = document.getElementById('bk-giai');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Chọn giải —</option>' +
+    (_T||[]).map(t=>`<option value="${t[0]||''}">${t[1]||t[0]||''}</option>`).join('');
+  if (cur) { sel.value = cur; onBkGiaiChange(); }
+}
+
+function bkRefresh() {
+  // Reload data rồi re-render
+  const giaiId = _bkGiai;
+  if (giaiId) loadMatchesCache(giaiId).then(() => bkRender());
+  else bkRender();
+}
+
+// ── Tính BXH vòng bảng → trả seeds theo mỗi bảng ────────────────
+function _bkCalcSeeds(giaiId, nd) {
+  const allM = _M.filter(m => String(m[0]||'')===giaiId && String(m[1]||'')===nd);
+  const bangM = allM.filter(m => {
+    const v = String(m[9]||'');
+    return !v || v==='Vòng bảng' || v.includes('bảng');
+  });
+  const bangs = [...new Set(bangM.map(m=>String(m[2]||'')).filter(Boolean))].sort();
+
+  const seeds = {}; // {bangName: [{team,pts,won,pd,rank}]}
+  bangs.forEach(bang => {
+    const bm = bangM.filter(m=>String(m[2]||'')===bang);
+    const table = {};
+    bm.forEach(m => {
+      const tA=String(m[4]||''), tB=String(m[7]||'');
+      if(!table[tA]) table[tA]={team:tA,pts:0,won:0,pf:0,pa:0};
+      if(!table[tB]) table[tB]={team:tB,pts:0,won:0,pf:0,pa:0};
+      if(!isMatchDone(m)) return;
+      const fs=getFinalScore(m);
+      if(!fs) return;
+      const sA=fs.scoreA, sB=fs.scoreB;
+      table[tA].pf+=sA; table[tA].pa+=sB;
+      table[tB].pf+=sB; table[tB].pa+=sA;
+      if(sA>sB){table[tA].pts+=2;table[tA].won++;}
+      else if(sB>sA){table[tB].pts+=2;table[tB].won++;}
+    });
+    const sorted = Object.values(table).sort((a,b)=>
+      (b.pts-a.pts)||((b.pf-b.pa)-(a.pf-a.pa))||(b.pf-a.pf));
+    sorted.forEach((s,i)=>{ s.rank=i+1; });
+    seeds[bang] = sorted;
+  });
+  return { seeds, bangs };
+}
+
+// ── Auto-fill cặp đấu vòng trong theo ảnh ────────────────────────
+// TK1: Nhất A vs Nhì B   TK2: Nhất C vs Nhì D
+// TK3: Nhất B vs Nhì A   TK4: Nhất D vs Nhì C
+// BK1: Thắng TK1 vs Thắng TK2
+// BK2: Thắng TK3 vs Thắng TK4
+// CK:  Thắng BK1 vs Thắng BK2   H3: Thua BK1 vs Thua BK2
+function _bkBuildTree(seeds, bangs, koMatches) {
+  // Lấy team theo rank từ seeds
+  const getTeam = (bang, rank) => {
+    const s = seeds[bang];
+    if (!s) return '';
+    const entry = s.find(x=>x.rank===rank);
+    return entry ? entry.team : '';
+  };
+
+  // Xác định cấu trúc theo số bảng
+  const nb = bangs.length;
+  const tree = {
+    vongBang: bangs,
+    rounds: []  // [{name, matches:[{code,teamA,teamB,seedA,seedB}]}]
+  };
+
+  if (nb === 0) return tree;
+
+  // Lấy winner/loser từ koMatches đã có
+  const koByCode = {};
+  koMatches.forEach(m => { koByCode[String(m[3]||'')] = m; });
+  const getWinner = (code) => {
+    const m = koByCode[code];
+    if (!m || !isMatchDone(m)) return '';
+    const fs = getFinalScore(m);
+    if (!fs) return '';
+    return fs.scoreA > fs.scoreB ? String(m[4]||'') : String(m[7]||'');
+  };
+  const getLoser = (code) => {
+    const m = koByCode[code];
+    if (!m || !isMatchDone(m)) return '';
+    const fs = getFinalScore(m);
+    if (!fs) return '';
+    return fs.scoreA > fs.scoreB ? String(m[7]||'') : String(m[4]||'');
+  };
+
+  // ── 2 bảng: TK(2) → BK(1) → CK ──
+  if (nb === 2) {
+    const [A,B] = bangs;
+    tree.rounds = [
+      { name:'Bán kết', cls:'bk-bk', matches:[
+        { code:'BK1', seedA:`Nhất ${A}`, seedB:`Nhì ${B}`,
+          teamA: getTeam(A,1)||getWinner('BK1')||'', teamB: getTeam(B,2)||'' },
+        { code:'BK2', seedA:`Nhất ${B}`, seedB:`Nhì ${A}`,
+          teamA: getTeam(B,1)||'', teamB: getTeam(A,2)||'' },
+      ]},
+      { name:'Chung kết', cls:'bk-ck', matches:[
+        { code:'CK', seedA:'Thắng BK1', seedB:'Thắng BK2',
+          teamA: getWinner('BK1'), teamB: getWinner('BK2') },
+      ]},
+      { name:'Tranh hạng 3', cls:'bk-h3', matches:[
+        { code:'H3', seedA:'Thua BK1', seedB:'Thua BK2',
+          teamA: getLoser('BK1'), teamB: getLoser('BK2') },
+      ]},
+    ];
+  }
+
+  // ── 4 bảng: TK(4) → BK(2) → CK + H3 ── (đúng theo ảnh)
+  else if (nb === 4) {
+    const [A,B,C,D] = bangs;
+    tree.rounds = [
+      { name:'Tứ kết', cls:'bk-tk', matches:[
+        { code:'TK1', seedA:`Nhất ${A}`, seedB:`Nhì ${B}`,
+          teamA: getTeam(A,1), teamB: getTeam(B,2) },
+        { code:'TK2', seedA:`Nhất ${C}`, seedB:`Nhì ${D}`,
+          teamA: getTeam(C,1), teamB: getTeam(D,2) },
+        { code:'TK3', seedA:`Nhất ${B}`, seedB:`Nhì ${A}`,
+          teamA: getTeam(B,1), teamB: getTeam(A,2) },
+        { code:'TK4', seedA:`Nhất ${D}`, seedB:`Nhì ${C}`,
+          teamA: getTeam(D,1), teamB: getTeam(C,2) },
+      ]},
+      { name:'Bán kết', cls:'bk-bk', matches:[
+        { code:'BK1', seedA:'Thắng TK1', seedB:'Thắng TK2',
+          teamA: getWinner('TK1'), teamB: getWinner('TK2') },
+        { code:'BK2', seedA:'Thắng TK3', seedB:'Thắng TK4',
+          teamA: getWinner('TK3'), teamB: getWinner('TK4') },
+      ]},
+      { name:'Chung kết', cls:'bk-ck', matches:[
+        { code:'CK', seedA:'Thắng BK1', seedB:'Thắng BK2',
+          teamA: getWinner('BK1'), teamB: getWinner('BK2') },
+      ]},
+      { name:'Tranh hạng 3', cls:'bk-h3', matches:[
+        { code:'H3', seedA:'Thua BK1', seedB:'Thua BK2',
+          teamA: getLoser('BK1'), teamB: getLoser('BK2') },
+      ]},
+    ];
+  }
+
+  // ── 3 bảng: TK(3 với 1 bye) → BK → CK ──
+  else if (nb === 3) {
+    const [A,B,C] = bangs;
+    tree.rounds = [
+      { name:'Tứ kết', cls:'bk-tk', matches:[
+        { code:'TK1', seedA:`Nhất ${A}`, seedB:`Nhì ${B}`,
+          teamA: getTeam(A,1), teamB: getTeam(B,2) },
+        { code:'TK2', seedA:`Nhất ${B}`, seedB:`Nhì ${C}`,
+          teamA: getTeam(B,1), teamB: getTeam(C,2) },
+        { code:'TK3', seedA:`Nhất ${C}`, seedB:`Nhì ${A}`,
+          teamA: getTeam(C,1), teamB: getTeam(A,2) },
+      ]},
+      { name:'Bán kết', cls:'bk-bk', matches:[
+        { code:'BK1', seedA:'Thắng TK1', seedB:'Thắng TK2',
+          teamA: getWinner('TK1'), teamB: getWinner('TK2') },
+        { code:'BK2', seedA:'Thắng TK3', seedB:'—',
+          teamA: getWinner('TK3'), teamB: '' },
+      ]},
+      { name:'Chung kết', cls:'bk-ck', matches:[
+        { code:'CK', seedA:'Thắng BK1', seedB:'Thắng BK2',
+          teamA: getWinner('BK1'), teamB: getWinner('BK2') },
+      ]},
+    ];
+  }
+
+  // ── 1 bảng / fallback ──
+  else {
+    const [A] = bangs;
+    tree.rounds = [
+      { name:'Chung kết', cls:'bk-ck', matches:[
+        { code:'CK', seedA:`Nhất ${A}`, seedB:`Nhì ${A}`,
+          teamA: getTeam(A,1), teamB: getTeam(A,2) },
+      ]},
+    ];
+  }
+
+  return tree;
+}
+
+// ── Apply overrides (chỉnh tay) ─────────────────────────────────
+function _bkApplyOverrides(tree) {
+  tree.rounds.forEach(round => {
+    round.matches.forEach(m => {
+      const ov = _bkOverrides[m.code];
+      if (ov) {
+        if (ov.teamA !== undefined) m.teamA = ov.teamA;
+        if (ov.teamB !== undefined) m.teamB = ov.teamB;
+      }
+    });
+  });
+  return tree;
+}
+
+// ── localStorage helpers ─────────────────────────────────────────
+function _bkKey() { return `pb_bk_${_bkGiai}_${_bkNd}`; }
+function _bkLoadOverrides() {
+  try { return JSON.parse(localStorage.getItem(_bkKey())||'{}'); } catch(e){ return {}; }
+}
+function _bkSaveOverrides() {
+  try { localStorage.setItem(_bkKey(), JSON.stringify(_bkOverrides)); } catch(e){}
+}
+
+// ── Render ───────────────────────────────────────────────────────
+function bkRender() {
+  const wrap = document.getElementById('bk-wrap');
+  const status = document.getElementById('bk-status');
+  if (!_bkGiai || !_bkNd) {
+    wrap.innerHTML = '<div class="empty"><div class="ei">🏆</div><p>Chọn giải và nội dung thi đấu</p></div>';
+    return;
+  }
+  const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
+  const allM = _M.filter(m=>String(m[0]||'')===_bkGiai&&String(m[1]||'')===_bkNd);
+  const koMatches = allM.filter(m=>{
+    const v=String(m[9]||''); return v&&v!=='Vòng bảng'&&!v.includes('bảng');
+  });
+  let tree = _bkBuildTree(seeds, bangs, koMatches);
+  tree = _bkApplyOverrides(tree);
+
+  const bangsDone = bangs.filter(b=>{
+    const bm=allM.filter(m=>String(m[2]||'')===b&&(String(m[9]||'')||'Vòng bảng').includes('bảng'));
+    return bm.length>0&&bm.every(m=>isMatchDone(m));
+  });
+  status.textContent = `${bangs.length} bảng · ${bangsDone.length}/${bangs.length} bảng xong · ${koMatches.length} trận vòng trong`;
+
+  // ── Build HTML ──
+  let html = '<div class="bk-wrap">';
+
+  // COLUMN 1: Group stage mini-cards
+  html += '<div class="bk-round" style="min-width:220px">';
+  html += '<div class="bk-round-title bk-vb">📋 Vòng bảng</div>';
+  html += '<div class="bk-slots">';
+  bangs.forEach(bang => {
+    const st = seeds[bang] || [];
+    const bm = allM.filter(m=>String(m[2]||'')===bang&&(String(m[9]||'')||'Vòng bảng').includes('bảng'));
+    const done = bm.filter(m=>isMatchDone(m)).length;
+    html += `<div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;margin-bottom:4px">`;
+    html += `<div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:6px;display:flex;justify-content:space-between">
+      <span>📋 ${bang}</span>
+      <span style="font-size:10px;color:var(--tx3)">${done}/${bm.length} trận</span>
+    </div>`;
+    st.slice(0,3).forEach((s,i)=>{
+      const medal=['🥇','🥈','🥉'][i]||`${i+1}.`;
+      const cls = ['s1','s2','s3'][i]||'';
+      html += `<div class="bk-seed-row">
+        <span class="bk-seed-badge ${cls}">${medal} Hạng ${i+1}</span>
+        <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${i<2?'var(--tx)':'var(--tx3)'}">${s.team}</span>
+        <span style="font-size:10px;color:var(--ac);font-family:var(--mo);font-weight:700">${s.pts}đ</span>
+      </div>`;
+    });
+    if (st.length === 0) html += `<div style="font-size:10px;color:var(--tx4);padding:4px 0">Chưa có kết quả</div>`;
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Connector arrow
+  html += '<div class="bk-connector" style="min-width:28px"><div class="bk-connector-line"></div></div>';
+
+  // COLUMNS: KO rounds
+  tree.rounds.forEach((round, ri) => {
+    html += `<div class="bk-round">`;
+    html += `<div class="bk-round-title ${round.cls}">${round.name}</div>`;
+    html += '<div class="bk-slots">';
+    round.matches.forEach(m => {
+      // Check if match has result in koMatches
+      const koM = koMatches.find(km=>String(km[3]||'')===m.code);
+      const done = koM && isMatchDone(koM);
+      const live = koM && _lK.has(`${_bkNd}|${koM[2]||''}|${m.code}`);
+      const fs = done ? getFinalScore(koM) : null;
+      const teamA = m.teamA || '';
+      const teamB = m.teamB || '';
+      const winA = fs && fs.scoreA > fs.scoreB;
+      const winB = fs && fs.scoreB > fs.scoreA;
+
+      html += `<div class="bk-match${done?' bk-done':''}${live?' bk-live':''}" onclick="bkEditMatch('${m.code}','${(teamA).replace(/'/g,"\\'")}','${(teamB).replace(/'/g,"\\'")}','${m.seedA}','${m.seedB}')">`;
+      html += `<div class="bk-match-code">
+        <span>${m.code}</span>
+        ${live?'<span style="color:var(--or);font-size:9px">● LIVE</span>':''}
+        ${done?'<span style="color:var(--gn);font-size:9px">✓ Done</span>':''}
+        <span class="bk-edit-badge">✏️</span>
+      </div>`;
+      html += `<div class="bk-team">
+        <span class="bk-team-name${winA?' bk-winner':''}${!teamA?' bk-tbd':''}" title="${teamA||m.seedA}">
+          ${teamA || `<em>${m.seedA}</em>`}
+        </span>
+        ${fs?`<span class="bk-score${winA?' bk-win':''}">${fs.scoreA}</span>`:''}
+      </div>`;
+      html += `<div style="text-align:center;font-size:9px;color:var(--tx4);padding:1px 10px;background:var(--bg3)">VS</div>`;
+      html += `<div class="bk-team">
+        <span class="bk-team-name${winB?' bk-winner':''}${!teamB?' bk-tbd':''}" title="${teamB||m.seedB}">
+          ${teamB || `<em>${m.seedB}</em>`}
+        </span>
+        ${fs?`<span class="bk-score${winB?' bk-win':''}">${fs.scoreB}</span>`:''}
+      </div>`;
+      html += '</div>';
+    });
+    html += '</div></div>';
+
+    // Connector between rounds (not after last)
+    if (ri < tree.rounds.length - 1) {
+      html += '<div class="bk-connector" style="min-width:20px"><div class="bk-connector-line"></div></div>';
+    }
+  });
+
+  html += '</div>'; // .bk-wrap
+  wrap.innerHTML = html;
+}
+
+// ── Auto-fill button ─────────────────────────────────────────────
+function bkAutoFill() {
+  if (!_bkGiai || !_bkNd) { toast('Chọn giải và nội dung trước', 'er'); return; }
+  const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
+  const allHaveSeeds = bangs.every(b => (seeds[b]||[]).length >= 2);
+  if (!allHaveSeeds) { toast('⚠️ Chưa đủ kết quả vòng bảng để tự động điền', 'er'); return; }
+  // Clear overrides - re-compute from fresh BXH
+  _bkOverrides = {};
+  _bkSaveOverrides();
+  bkRender();
+  toast('✅ Đã tự động điền từ BXH vòng bảng!', 'ok');
+}
+
+// ── Edit match popup ─────────────────────────────────────────────
+function bkEditMatch(code, teamA, teamB, seedA, seedB) {
+  const html = `
+    <div id="bk-edit-mo" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)">
+      <div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:16px;padding:24px;width:min(380px,90vw);box-shadow:var(--shadow-lg)">
+        <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:4px">✏️ Sửa trận <span style="color:var(--ac)">${code}</span></div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:16px">Nhập tên đội để chỉnh tay. Để trống = dùng kết quả tự động.</div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${seedA}</div>
+          <input id="bk-edit-a" class="inp" value="${teamA}" placeholder="${seedA}" style="width:100%;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:20px">
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">${seedB}</div>
+          <input id="bk-edit-b" class="inp" value="${teamB}" placeholder="${seedB}" style="width:100%;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn bh bsm" onclick="document.getElementById('bk-edit-mo').remove()">Huỷ</button>
+          <button class="btn bsm" style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25)"
+            onclick="bkClearOverride('${code}')">🔄 Reset</button>
+          <button class="btn bp bsm" onclick="bkSaveEdit('${code}','${seedA}','${seedB}')">💾 Lưu</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('bk-edit-a').focus();
+}
+
+function bkSaveEdit(code, seedA, seedB) {
+  const a = document.getElementById('bk-edit-a').value.trim();
+  const b = document.getElementById('bk-edit-b').value.trim();
+  _bkOverrides[code] = { teamA: a, teamB: b };
+  _bkSaveOverrides();
+  document.getElementById('bk-edit-mo')?.remove();
+  bkRender();
+  toast(`💾 Đã lưu sửa trận ${code}`, 'ok');
+}
+
+function bkClearOverride(code) {
+  delete _bkOverrides[code];
+  _bkSaveOverrides();
+  document.getElementById('bk-edit-mo')?.remove();
+  bkRender();
+  toast(`🔄 Reset trận ${code} về tự động`, 'in');
+}
+
+// ── Save all (push KO matches to GSheets) ────────────────────────
+async function bkSave() {
+  if (!_bkGiai || !_bkNd) { toast('Chọn giải và nội dung trước', 'er'); return; }
+  const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
+  const allM = _M.filter(m=>String(m[0]||'')===_bkGiai&&String(m[1]||'')===_bkNd);
+  const koMatches = allM.filter(m=>{
+    const v=String(m[9]||''); return v&&v!=='Vòng bảng'&&!v.includes('bảng');
+  });
+  let tree = _bkBuildTree(seeds, bangs, koMatches);
+  tree = _bkApplyOverrides(tree);
+
+  // Collect all matches that have teams assigned
+  const toCreate = [];
+  const toUpdate = [];
+  tree.rounds.forEach(round => {
+    round.matches.forEach(m => {
+      if (!m.teamA && !m.teamB) return;
+      const existing = koMatches.find(km=>String(km[3]||'')===m.code);
+      if (existing) {
+        // Update nếu teams thay đổi
+        const curA = String(existing[4]||''), curB = String(existing[7]||'');
+        if (curA !== m.teamA || curB !== m.teamB) toUpdate.push({m, existing, round});
+      } else {
+        toCreate.push({m, round});
+      }
+    });
+  });
+
+  if (!toCreate.length && !toUpdate.length) {
+    toast('Không có gì thay đổi để lưu', 'in'); return;
+  }
+
+  const msg = [];
+  if (toCreate.length) msg.push(`Tạo ${toCreate.length} trận mới`);
+  if (toUpdate.length) msg.push(`Cập nhật ${toUpdate.length} trận`);
+  if (!confirm(`${msg.join(' · ')}?\n\n${[...toCreate,...toUpdate].map(x=>`${x.m.code}: ${x.m.teamA} vs ${x.m.teamB}`).join('\n')}`)) return;
+
+  toast('⏳ Đang lưu...','in');
+  let ok=0, fail=0;
+  const court = '';
+  const giaiName = _bkGiaiName || _bkGiai;
+
+  for (const {m, round} of toCreate) {
+    try {
+      const row = [_bkGiai, _bkNd, '', m.code, m.teamA,'','', m.teamB, court, round.name,''];
+      const d = await gPost({action:'addMatchAdmin', adminCode:CODE, row});
+      d.ok ? ok++ : fail++;
+    } catch(e) { fail++; }
+  }
+  for (const {m, existing, round} of toUpdate) {
+    try {
+      const newRow = [...existing];
+      newRow[4]=m.teamA; newRow[7]=m.teamB;
+      const d = await gPost({action:'updateMatch', adminCode:CODE,
+        giai:String(existing[0]||''), giaiName:String(existing[0]||''),
+        bang:String(existing[2]||''), code:String(existing[3]||''), row:newRow});
+      d.ok ? ok++ : fail++;
+    } catch(e) { fail++; }
+  }
+
+  if (ok) { toast(`✅ Lưu xong ${ok} trận vào lịch thi đấu`, 'ok'); }
+  if (fail) { toast(`⚠️ ${fail} trận lỗi`, 'er'); }
+  await loadMatchesCache(_bkGiai);
+  bkRender();
+}
+// ════════════════════════════════════════════════════════════════
 
 // ── Tạo knockout tự động từ BXH vòng bảng ──
 async function genKnockout(giaiId, nd) {
