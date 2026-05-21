@@ -946,6 +946,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
           <div style="display:flex;gap:8px">
             <button class="btn bh" onclick="openAddBangMo()">＋ Thêm bảng</button>
             <button class="btn bp" onclick="openBracketMo()">🏆 Bracket</button>
+            <button id="btn-cleanup-dup" class="btn bsm" style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25);font-size:12px" onclick="cleanupDuplicateMatches()" title="Xóa trận bị trùng trong Google Sheets">🧹 Dọn trùng</button>
           </div>
         </div>
 
@@ -4162,6 +4163,28 @@ function renderBracket() {
 }
 
 
+
+// ── Dọn dẹp duplicate trận trong Sheets (gọi GAS cleanupDuplicates) ──
+async function cleanupDuplicateMatches() {
+  if (!confirm('Xóa tất cả trận bị trùng trong Google Sheets?\n\nGiữ lại 1 bản, xóa các bản trùng.')) return;
+  const btn = document.getElementById('btn-cleanup-dup');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang dọn...'; }
+  try {
+    const d = await gPost({ action: 'cleanupDuplicates', adminCode: CODE });
+    if (d.ok) {
+      toast(`✅ Xóa ${d.removed} trận trùng · Còn lại ${d.kept} trận`, 'ok');
+      // Reload cache
+      if (_curTourn) await loadMatchesCache(String(_curTourn[0]||''));
+      renderBangList(_curGiaiId||'', _curNd||'');
+    } else {
+      toast('❌ ' + (d.reason||'Lỗi'), 'er');
+    }
+  } catch(e) {
+    toast('❌ Lỗi kết nối: ' + e.message, 'er');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🧹 Dọn trùng'; }
+  }
+}
 
 // ════════════════════════════════════════════════════════════════
 //  CÂY THI ĐẤU (BRACKET) — Full interactive
