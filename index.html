@@ -1944,8 +1944,16 @@ async function prefetchAll() {
     }
     // Matches
     if (mRes.rows?.length > 1) {
-      _M = normalizeMatchRows(mRes.rows.slice(1));
-      cacheSet('matches_' + giaiParam, _M);
+      const allRows = normalizeMatchRows(mRes.rows.slice(1));
+      _M = allRows;
+      // Cache by giaiParam AND by each unique giaiName in the data
+      // This prevents duplicate loads in loadMatchesCache
+      cacheSet('matches_' + giaiParam, allRows);
+      const giaiNames = [...new Set(allRows.map(r => String(r[0]||'')).filter(Boolean))];
+      giaiNames.forEach(gn => {
+        const giaiRows = allRows.filter(r => String(r[0]||'') === gn);
+        cacheSet('matches_' + gn, giaiRows);
+      });
     }
     // Results → build _dK, _dkScores ngay
     if (rRes.rows?.length > 1) {
@@ -1966,6 +1974,7 @@ async function prefetchAll() {
     if (document.getElementById('tv-list')) renderTournCards(_T);
     _showGasOk(); // Ẩn error bar khi kết nối thành công
     if (_curPage === 'bracket') bkInit();
+    dedupM(); // Safety net: loại bỏ duplicate
     console.log('[prefetch] OK — T:', _T.length, 'M:', _M.length,
       'done:', _dkBangCode.size, 'live:', _lK.size);
   } catch(e) {
@@ -3896,15 +3905,27 @@ function normalizeMatchRows(rows) {
   return rows.map(r => [...r]); // chỉ clone, không thay đổi
 }
 
+// Dedup _M: giữ lại mỗi composite key (giaiName|bang|code) 1 lần duy nhất
+// Gọi sau bất kỳ thao tác nào có thể gây duplicate
+function dedupM() {
+  const seen = new Set();
+  _M = _M.filter(m => {
+    const k = `${String(m[0]||'')}|${String(m[2]||'')}|${String(m[3]||'')}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
 async function loadMatchesCache(giaiId='') {
   // Resolve giaiName từ _T (luôn dùng tên để match với GSheets)
   const giaiName = giaiId ? String((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
   const cKey = 'matches_' + giaiName;
 
-  // Dùng cache nếu còn mới VÀ đã có done-keys
+  // Dùng cache nếu còn mới
   const cached = cacheGet(cKey);
   if (cached) {
-    // Merge vào _M (thay thế các trận cùng giải)
+    // Thay thế hoàn toàn dữ liệu của giải này trong _M (không append để tránh duplicate)
     const others = _M.filter(m => String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId);
     _M = [...others, ...cached];
     return;
@@ -3921,7 +3942,10 @@ async function loadMatchesCache(giaiId='') {
     if (md.rows?.length > 1) {
       const newRows = normalizeMatchRows(md.rows.slice(1));
       cacheSet(cKey, newRows);
-      const others = _M.filter(m => String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId);
+      // REPLACE (không append) — loại bỏ cả giaiName lẫn giaiId để tránh duplicate
+      const others = _M.filter(m =>
+        String(m[0]||'') !== giaiName && String(m[0]||'') !== giaiId
+      );
       _M = [...others, ...newRows];
     }
     if (rd.rows?.length > 1) buildDkFromResults(rd.rows.slice(1));
@@ -3933,6 +3957,7 @@ async function loadMatchesCache(giaiId='') {
           teamA:String(r[2]||''), teamB:String(r[5]||''), game:String(r[7]||'') };
       });
     }
+    dedupM(); // Safety net: loại bỏ duplicate nếu có
     console.log('[loadMatchesCache] giaiName:', giaiName, '→ M:', _M.length, 'done:', _dkBangCode.size);
   } catch(e) {
     console.error('[loadMatchesCache]', e.message);
@@ -4214,8 +4239,10 @@ async function bkRefresh() {
     const d = await gGet({ action:'matches', giai: giaiName }).catch(()=>({}));
     if (d?.rows?.length) {
       const normalized = normalizeMatchRows(d.rows.slice(1));
+      cacheSet('matches_' + giaiName, normalized); // update cache để tránh stale
       const others = _M.filter(m=>String(m[0]||'')!==giaiName);
       _M = [...others, ...normalized];
+      dedupM();
     }
     const d2 = await gGet({ action:'results', giai: giaiName }).catch(()=>({}));
     if (d2?.rows?.length) {
