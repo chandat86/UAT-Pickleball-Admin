@@ -4245,29 +4245,44 @@ function _bkCalcSeeds(giaiId, nd) {
   });
   const bangs = [...new Set(bangM.map(m=>String(m[2]||'')).filter(Boolean))].sort();
 
-  const seeds = {}; // {bangName: [{team,pts,won,pd,rank}]}
+  const seeds   = {};   // { bangName: [{team,won,lost,pf,pa,rank,played}] }
+  const bangDone = {}; // { bangName: boolean } — true nếu tất cả trận bảng hoàn thành
+
   bangs.forEach(bang => {
-    const bm = bangM.filter(m=>String(m[2]||'')===bang);
+    const bm = bangM.filter(m => String(m[2]||'') === bang);
     const table = {};
+    let doneCount = 0;
+
     bm.forEach(m => {
-      const tA=String(m[4]||''), tB=String(m[7]||'');
-      if(!table[tA]) table[tA]={team:tA,pts:0,won:0,pf:0,pa:0};
-      if(!table[tB]) table[tB]={team:tB,pts:0,won:0,pf:0,pa:0};
-      if(!isMatchDone(m)) return;
-      const fs=getFinalScore(m);
-      if(!fs) return;
-      const sA=fs.scoreA, sB=fs.scoreB;
-      table[tA].pf+=sA; table[tA].pa+=sB;
-      table[tB].pf+=sB; table[tB].pa+=sA;
-      if(sA>sB){table[tA].pts+=2;table[tA].won++;}
-      else if(sB>sA){table[tB].pts+=2;table[tB].won++;}
+      const tA = String(m[4]||''), tB = String(m[7]||'');
+      if (!tA || !tB) return; // bỏ qua hàng rỗng
+      if (!table[tA]) table[tA] = { team:tA, won:0, lost:0, pf:0, pa:0, played:0 };
+      if (!table[tB]) table[tB] = { team:tB, won:0, lost:0, pf:0, pa:0, played:0 };
+      if (!isMatchDone(m)) return;
+      doneCount++;
+      const fs = getFinalScore(m);
+      if (!fs) return;
+      const sA = Number(fs.scoreA)||0, sB = Number(fs.scoreB)||0;
+      table[tA].pf += sA; table[tA].pa += sB; table[tA].played++;
+      table[tB].pf += sB; table[tB].pa += sA; table[tB].played++;
+      // Thắng = 1đ (đồng bộ với BXH chính thức)
+      if (sA > sB) { table[tA].won++; table[tB].lost++; }
+      else if (sB > sA) { table[tB].won++; table[tA].lost++; }
     });
-    const sorted = Object.values(table).sort((a,b)=>
-      (b.pts-a.pts)||((b.pf-b.pa)-(a.pf-a.pa))||(b.pf-a.pf));
-    sorted.forEach((s,i)=>{ s.rank=i+1; });
+
+    // Sắp xếp: Thắng → Hiệu số → Điểm ghi
+    const sorted = Object.values(table).sort((a, b) =>
+      (b.won - a.won) || ((b.pf-b.pa)-(a.pf-a.pa)) || (b.pf - a.pf)
+    );
+    sorted.forEach((s, i) => { s.rank = i + 1; });
     seeds[bang] = sorted;
+
+    // Bảng hoàn thành khi tất cả trận đã được chấm
+    bangDone[bang] = doneCount === bm.filter(m =>
+      String(m[4]||'') && String(m[7]||'')).length && bm.length > 0;
   });
-  return { seeds, bangs };
+
+  return { seeds, bangs, bangDone };
 }
 
 // ── Auto-fill cặp đấu vòng trong theo ảnh ────────────────────────
@@ -4276,12 +4291,14 @@ function _bkCalcSeeds(giaiId, nd) {
 // BK1: Thắng TK1 vs Thắng TK2
 // BK2: Thắng TK3 vs Thắng TK4
 // CK:  Thắng BK1 vs Thắng BK2   H3: Thua BK1 vs Thua BK2
-function _bkBuildTree(seeds, bangs, koMatches) {
+function _bkBuildTree(seeds, bangs, koMatches, bangDone) {
   // Lấy team theo rank từ seeds
+  // Nếu bảng ĐÃ XONG → trả tên thật; nếu chưa → trả placeholder
   const getTeam = (bang, rank) => {
+    if (!bangDone?.[bang]) return ''; // chưa xong → placeholder hiển thị từ seedA/seedB
     const s = seeds[bang];
     if (!s) return '';
-    const entry = s.find(x=>x.rank===rank);
+    const entry = s.find(x => x.rank === rank);
     return entry ? entry.team : '';
   };
 
@@ -4434,20 +4451,18 @@ function bkRender() {
     wrap.innerHTML = '<div class="empty"><div class="ei">🏆</div><p>Chọn giải và nội dung thi đấu</p></div>';
     return;
   }
-  const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
+  const { seeds, bangs, bangDone } = _bkCalcSeeds(_bkGiai, _bkNd);
   const _giaiName = _resolveGiaiName(_bkGiai) || _bkGiai;
   const allM = _M.filter(m=>String(m[0]||'')===_giaiName&&String(m[1]||'')===_bkNd);
   const koMatches = allM.filter(m=>{
     const v=String(m[9]||''); return v&&v!=='Vòng bảng'&&!v.includes('bảng');
   });
-  let tree = _bkBuildTree(seeds, bangs, koMatches);
+  let tree = _bkBuildTree(seeds, bangs, koMatches, bangDone);
   tree = _bkApplyOverrides(tree);
 
-  const bangsDone = bangs.filter(b=>{
-    const bm=allM.filter(m=>String(m[2]||'')===b&&(String(m[9]||'')||'Vòng bảng').includes('bảng'));
-    return bm.length>0&&bm.every(m=>isMatchDone(m));
-  });
-  status.textContent = `${bangs.length} bảng · ${bangsDone.length}/${bangs.length} bảng xong · ${koMatches.length} trận vòng trong`;
+  // bangDone is now computed in _bkCalcSeeds
+  const completedBangs = bangs.filter(b => bangDone?.[b]).length;
+  status.textContent = `${bangs.length} bảng · ${completedBangs}/${bangs.length} bảng xong · ${koMatches.length} trận vòng trong`;
 
   // ── Build HTML ──
   let html = '<div class="bk-wrap">';
@@ -4459,19 +4474,26 @@ function bkRender() {
   bangs.forEach(bang => {
     const st = seeds[bang] || [];
     const bm = allM.filter(m=>String(m[2]||'')===bang&&(String(m[9]||'')||'Vòng bảng').includes('bảng'));
-    const done = bm.filter(m=>isMatchDone(m)).length;
-    html += `<div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;margin-bottom:4px">`;
-    html += `<div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:6px;display:flex;justify-content:space-between">
+    const doneCount = bm.filter(m=>isMatchDone(m)).length;
+    const isBangComplete = bangDone?.[bang];
+    const bangStatusColor = isBangComplete ? 'var(--gn)' : (doneCount>0 ? 'var(--or)' : 'var(--tx3)');
+    const bangStatusIcon  = isBangComplete ? '✅' : (doneCount>0 ? '🔄' : '⏳');
+    html += `<div style="background:var(--bg3);border:1px solid ${isBangComplete?'var(--gn)':'var(--bdr)'};border-radius:10px;padding:10px 12px;margin-bottom:4px;transition:border-color .2s">`;
+    html += `<div style="font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
       <span>📋 ${bang}</span>
-      <span style="font-size:10px;color:var(--tx3)">${done}/${bm.length} trận</span>
+      <span style="font-size:10px;color:${bangStatusColor};display:flex;align-items:center;gap:3px">
+        ${bangStatusIcon} ${doneCount}/${bm.length}
+        ${isBangComplete?'<span style="background:rgba(16,185,129,.15);color:var(--gn);border-radius:8px;padding:1px 5px;font-size:9px;font-weight:700">XONG</span>':''}
+      </span>
     </div>`;
     st.slice(0,3).forEach((s,i)=>{
       const medal=['🥇','🥈','🥉'][i]||`${i+1}.`;
       const cls = ['s1','s2','s3'][i]||'';
       html += `<div class="bk-seed-row">
-        <span class="bk-seed-badge ${cls}">${medal} Hạng ${i+1}</span>
+        <span class="bk-seed-badge ${cls}">${medal} #${i+1}</span>
         <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${i<2?'var(--tx)':'var(--tx3)'}">${s.team}</span>
-        <span style="font-size:10px;color:var(--ac);font-family:var(--mo);font-weight:700">${s.pts}đ</span>
+        <span style="font-size:10px;color:var(--tx3);font-family:var(--mo)">${s.played||0}T</span>
+        <span style="font-size:11px;color:var(--ac);font-family:var(--mo);font-weight:700">${s.won}W</span>
       </div>`;
     });
     if (st.length === 0) html += `<div style="font-size:10px;color:var(--tx4);padding:4px 0">Chưa có kết quả</div>`;
@@ -4506,19 +4528,17 @@ function bkRender() {
         ${done?'<span style="color:var(--gn);font-size:9px">✓ Done</span>':''}
         <span class="bk-edit-badge">✏️</span>
       </div>`;
-      html += `<div class="bk-team">
-        <span class="bk-team-name${winA?' bk-winner':''}${!teamA?' bk-tbd':''}" title="${teamA||m.seedA}">
-          ${teamA || `<em>${m.seedA}</em>`}
-        </span>
-        ${fs?`<span class="bk-score${winA?' bk-win':''}">${fs.scoreA}</span>`:''}
-      </div>`;
+      // Team display: real name if bang done, placeholder if pending
+      const dispA = teamA
+        ? `<span class="bk-team-name${winA?' bk-winner':''}" title="${teamA}">${teamA}</span>`
+        : `<span class="bk-team-name bk-tbd" title="${m.seedA}" style="font-size:10px;opacity:.7">${m.seedA}</span>`;
+      const dispB = teamB
+        ? `<span class="bk-team-name${winB?' bk-winner':''}" title="${teamB}">${teamB}</span>`
+        : `<span class="bk-team-name bk-tbd" title="${m.seedB}" style="font-size:10px;opacity:.7">${m.seedB}</span>`;
+
+      html += `<div class="bk-team">${dispA}${fs?`<span class="bk-score${winA?' bk-win':''}">${fs.scoreA}</span>`:''}</div>`;
       html += `<div style="text-align:center;font-size:9px;color:var(--tx4);padding:1px 10px;background:var(--bg3)">VS</div>`;
-      html += `<div class="bk-team">
-        <span class="bk-team-name${winB?' bk-winner':''}${!teamB?' bk-tbd':''}" title="${teamB||m.seedB}">
-          ${teamB || `<em>${m.seedB}</em>`}
-        </span>
-        ${fs?`<span class="bk-score${winB?' bk-win':''}">${fs.scoreB}</span>`:''}
-      </div>`;
+      html += `<div class="bk-team">${dispB}${fs?`<span class="bk-score${winB?' bk-win':''}">${fs.scoreB}</span>`:''}</div>`;
       html += '</div>';
     });
     html += '</div></div>';
@@ -4536,7 +4556,7 @@ function bkRender() {
 // ── Auto-fill button ─────────────────────────────────────────────
 function bkAutoFill() {
   if (!_bkGiai || !_bkNd) { toast('Chọn giải và nội dung trước', 'er'); return; }
-  const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
+  const { seeds, bangs, bangDone } = _bkCalcSeeds(_bkGiai, _bkNd);
   const allHaveSeeds = bangs.every(b => (seeds[b]||[]).length >= 2);
   if (!allHaveSeeds) { toast('⚠️ Chưa đủ kết quả vòng bảng để tự động điền', 'er'); return; }
   // Clear overrides - re-compute from fresh BXH
@@ -4594,13 +4614,13 @@ function bkClearOverride(code) {
 // ── Save all (push KO matches to GSheets) ────────────────────────
 async function bkSave() {
   if (!_bkGiai || !_bkNd) { toast('Chọn giải và nội dung trước', 'er'); return; }
-  const { seeds, bangs } = _bkCalcSeeds(_bkGiai, _bkNd);
+  const { seeds, bangs, bangDone } = _bkCalcSeeds(_bkGiai, _bkNd);
   const _giaiName = _resolveGiaiName(_bkGiai) || _bkGiai;
   const allM = _M.filter(m=>String(m[0]||'')===_giaiName&&String(m[1]||'')===_bkNd);
   const koMatches = allM.filter(m=>{
     const v=String(m[9]||''); return v&&v!=='Vòng bảng'&&!v.includes('bảng');
   });
-  let tree = _bkBuildTree(seeds, bangs, koMatches);
+  let tree = _bkBuildTree(seeds, bangs, koMatches, bangDone);
   tree = _bkApplyOverrides(tree);
 
   // Collect all matches that have teams assigned
