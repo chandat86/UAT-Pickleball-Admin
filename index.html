@@ -1764,22 +1764,37 @@ function cacheGet(key) {
 }
 function cacheSet(key, data) { _cache[key] = { ts: Date.now(), data }; }
 
+let _prefetchFailed = false; // Flag để tránh toast lỗi trùng lặp
 async function prefetchAll() {
-  // Tải song song: Tournaments + Matches + Results + Live (1 roundtrip)
+  _prefetchFailed = false;
   const giaiParam = ROLE === 'manager' ? MY_GIAI : '';
   try {
-    // BATCH: 1 request thay vì 4 request song song → giảm 75% round-trips GAS
-    const giaiQ = giaiParam ? `&giai=${encodeURIComponent(giaiParam)}` : '';
+    // Thử BATCH trước (GAS v8+). Nếu GAS cũ chưa support → fallback 4 request song song
+    let tRes={}, mRes={}, rRes={}, lRes={};
     const batch = await gGet({
       action: 'batch',
       actions: 'tournaments,matches,results,live',
       code: 'all',
       giai: giaiParam
-    }).catch(() => ({}));
-    const tRes = batch.tournaments || {};
-    const mRes = batch.matches    || {};
-    const rRes = batch.results    || {};
-    const lRes = batch.live       || {};
+    }).catch(() => null);
+
+    if (batch && (batch.tournaments || batch.matches)) {
+      // GAS v8 đã deploy → dùng batch data
+      tRes = batch.tournaments || {};
+      mRes = batch.matches     || {};
+      rRes = batch.results     || {};
+      lRes = batch.live        || {};
+    } else {
+      // Fallback: GAS cũ (v7-) → gọi song song như cũ
+      console.warn('[prefetch] Batch không khả dụng, dùng fallback 4 requests');
+      const [t2, m2, r2, l2] = await Promise.all([
+        gGet({ action: 'tournaments' }).catch(() => ({})),
+        gGet({ action: 'matches', giai: giaiParam }).catch(() => ({})),
+        gGet({ action: 'results', giai: giaiParam }).catch(() => ({})),
+        gGet({ action: 'live', code: 'all', giai: giaiParam }).catch(() => ({}))
+      ]);
+      tRes = t2; mRes = m2; rRes = r2; lRes = l2;
+    }
 
     // Tournaments
     if (tRes.rows?.length) {
@@ -1811,9 +1826,15 @@ async function prefetchAll() {
     console.log('[prefetch] OK — T:', _T.length, 'M:', _M.length,
       'done:', _dkBangCode.size, 'live:', _lK.size);
   } catch(e) {
+    _prefetchFailed = true;
     console.error('[prefetch] Error:', e.message);
-    toast('Lỗi kết nối GAS — kiểm tra URL deploy', 'er');
+    const isTimeout = (e.message||'').includes('timeout');
+    toast(isTimeout
+      ? '⏱ GAS phản hồi chậm — thử lại sau'
+      : '❌ Không kết nối được GAS. Kiểm tra URL deploy.',
+      'er');
   }
+  // Vẫn gọi loadDash để render UI (dùng cache nếu có), nhưng không toast lỗi lần 2
   loadDash();
 }
 
@@ -2013,7 +2034,12 @@ function getBangs(giai, nd) {
 //  DASHBOARD
 // ════════════════════════════════════════════════════════════════
 async function loadDash() {
-  const btn = document.getElementById('dash-rf'); btn.textContent = '⏳ ...';
+  const btn = document.getElementById('dash-rf'); if(btn) btn.textContent = '⏳ ...';
+  if (!GS) {
+    if(btn) btn.textContent = '↻ Làm mới';
+    toast('Chưa nhập URL GAS — vào Cài đặt để kết nối', 'er');
+    return;
+  }
   const giaiId = document.getElementById('dash-giai').value;
   // Gửi tên giải (giaiName) vì GAS lưu tên trong sheet, không phải mã
   const giaiName = giaiId ? ((_T.find(t=>String(t[0]||'')===giaiId)||[])[1]||giaiId) : '';
@@ -2285,9 +2311,17 @@ async function loadDash() {
     } // end else (filter view)
   } catch(e) {
     console.error('[loadDash] Error:', e.message, e.stack||'');
-    // Phân biệt lỗi kết nối vs lỗi JS
-    const isNetwork = e instanceof TypeError || (e.message||'').includes('fetch') || (e.message||'').includes('network');
-    toast(isNetwork ? 'Lỗi kết nối GAS — kiểm tra URL và deploy' : 'Lỗi dashboard: ' + (e.message||e), 'er');
+    const isTimeout = (e.message||'').includes('timeout');
+    const isNetwork = isTimeout || e instanceof TypeError || (e.message||'').includes('fetch') || (e.message||'').includes('network');
+    if (isNetwork) {
+      // Chỉ toast nếu prefetch chưa báo lỗi rồi (tránh 2 toast cùng lúc)
+      if (!_prefetchFailed) {
+        toast(isTimeout ? '⏱ GAS timeout — GSheet đang bận, thử lại sau' : '❌ Lỗi kết nối GAS — kiểm tra URL deploy', 'er');
+      }
+    } else {
+      toast('Lỗi: ' + (e.message||e), 'er');
+    }
+    _prefetchFailed = false; // Reset sau khi đã xử lý
   }
   finally { if(btn) btn.textContent = '↻ Làm mới'; }
 }
